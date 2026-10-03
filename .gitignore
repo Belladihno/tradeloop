@@ -31,3 +31,6 @@ coverage/
 
 # turbo
 .turbo/
+
+# local planning docs (not part of the product)
+TRADELOOP_TRD.md

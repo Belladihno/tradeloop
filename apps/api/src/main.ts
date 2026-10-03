@@ -9,6 +9,7 @@ import {
 import helmet from "@fastify/helmet";
 import { ZodValidationPipe } from "nestjs-zod";
 import { AppModule } from "./app.module";
+import { registerRawBodyParser } from "./common/http/raw-body";
 import { registerRequestIdHook } from "./common/middleware/request-id.middleware";
 import { SanitizePipe } from "./common/pipes/sanitize.pipe";
 import type { Env } from "./config/env.validation";
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<void> {
   const adminUrl = config.get("ADMIN_URL", { infer: true });
 
   await app.register(helmet);
+  registerRawBodyParser(app.getHttpAdapter().getInstance());
   registerRequestIdHook(app.getHttpAdapter().getInstance());
   app.enableCors({ origin: [webUrl, adminUrl], credentials: true });
   app.setGlobalPrefix("api/v1");

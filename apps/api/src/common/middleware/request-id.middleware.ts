@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 declare module "fastify" {
   interface FastifyRequest {
     requestId?: string;
+    rawBody?: Buffer;
   }
 }
 

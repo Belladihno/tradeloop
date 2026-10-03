@@ -1,12 +1,21 @@
 import { Injectable } from "@nestjs/common";
-import type { QueryRunner } from "typeorm";
-import { WalletType } from "@tradeloop/types";
+import { ConfigService } from "@nestjs/config";
+import { DataSource, type QueryRunner } from "typeorm";
+import { v7 as uuidv7 } from "uuid";
+import { TransactionStatus, TransactionType, WalletType } from "@tradeloop/types";
+import type { Env } from "../config/env.validation";
+import { PaymentService } from "../payments/payment.service";
 import type { Wallet } from "./entities/wallet.entity";
 import { WalletRepository } from "./wallet.repository";
 
 @Injectable()
 export class WalletService {
-  constructor(private readonly wallets: WalletRepository) {}
+  constructor(
+    private readonly wallets: WalletRepository,
+    private readonly payments: PaymentService,
+    private readonly config: ConfigService<Env, true>,
+    private readonly dataSource: DataSource,
+  ) {}
 
   async ensureBuyerWallet(userId: string): Promise<Wallet> {
     const existing = await this.wallets.findByUserAndType(userId, WalletType.BUYER);
@@ -27,5 +36,75 @@ export class WalletService {
 
   verifyLedger(walletId: string, runner: QueryRunner): Promise<string> {
     return this.wallets.verifyBalance(walletId, runner);
+  }
+
+  async initiateFunding(
+    userId: string,
+    email: string,
+    amount: string,
+  ): Promise<{ paymentUrl: string; reference: string }> {
+    const wallet = await this.ensureBuyerWallet(userId);
+    const reference = uuidv7();
+    const runner = this.dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      await this.wallets.recordTransaction(
+        {
+          fromWalletId: wallet.id,
+          toWalletId: wallet.id,
+          amount,
+          type: TransactionType.WALLET_FUND,
+          referenceId: reference,
+          referenceType: "WalletFund",
+        },
+        runner,
+        TransactionStatus.PENDING,
+      );
+      await runner.commitTransaction();
+    } catch (error) {
+      await runner.rollbackTransaction();
+      throw error;
+    } finally {
+      await runner.release();
+    }
+    const webUrl = this.config.get("WEB_URL", { infer: true });
+    const { paymentUrl } = await this.payments.initializeTransaction({
+      amount,
+      email,
+      callbackUrl: `${webUrl}/wallet`,
+      reference,
+    });
+    return { paymentUrl, reference };
+  }
+
+  async confirmFunding(
+    reference: string,
+    amount: string,
+  ): Promise<"completed" | "duplicate"> {
+    const runner = this.dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      const pending = await this.wallets.findPendingFunding(reference, runner);
+      if (!pending) {
+        await runner.rollbackTransaction();
+        return "duplicate";
+      }
+      if (pending.amount !== amount) {
+        throw new Error(
+          `Funding amount mismatch for ${reference}: expected ${pending.amount}, got ${amount}`,
+        );
+      }
+      await this.wallets.creditAtomic(pending.toWalletId, amount, runner);
+      await this.wallets.markTransactionCompleted(pending.id, runner);
+      await runner.commitTransaction();
+      return "completed";
+    } catch (error) {
+      await runner.rollbackTransaction();
+      throw error;
+    } finally {
+      await runner.release();
+    }
   }
 }
