@@ -14,6 +14,12 @@ export const envSchema = z.object({
     .regex(/^\d+[smhd]$/, "Use a format like 15m, 1h, or 7d")
     .default("7d"),
 
+  ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, "ENCRYPTION_KEY must be 64 hex characters")
+    .optional()
+    .default(""),
+
   GOOGLE_CLIENT_ID: z.string().optional().default(""),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
   GOOGLE_CALLBACK_URL: z.string().optional().default(""),
@@ -23,6 +29,10 @@ export const envSchema = z.object({
   FLUTTERWAVE_SECRET_KEY: z.string().optional().default(""),
   FLUTTERWAVE_WEBHOOK_SECRET: z.string().optional().default(""),
   PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave"]).default("paystack"),
+  PLATFORM_COMMISSION_RATE: z
+    .string()
+    .regex(/^\d+(\.\d{1,4})?$/, "Use a decimal like 0.10")
+    .default("0.10"),
 
   SENDBOX_API_KEY: z.string().optional().default(""),
   SENDBOX_WEBHOOK_SECRET: z.string().optional().default(""),
@@ -39,8 +49,7 @@ export const envSchema = z.object({
   EMAIL_FROM: z.string().default("noreply@tradeloop.com"),
 
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().default(3000),
-  API_URL: z.string().default("http://localhost:3000"),
+  PORT: z.coerce.number().default(3000),  API_URL: z.string().default("http://localhost:3000"),
   WEB_URL: z.string().default("http://localhost:3001"),
   ADMIN_URL: z.string().default("http://localhost:3002"),
 

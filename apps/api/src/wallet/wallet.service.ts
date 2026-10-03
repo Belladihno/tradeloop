@@ -14,6 +14,12 @@ export class WalletService {
     return this.wallets.createUserWallet(userId, WalletType.BUYER);
   }
 
+  async ensureSellerWallet(userId: string): Promise<Wallet> {
+    const existing = await this.wallets.findByUserAndType(userId, WalletType.SELLER);
+    if (existing) return existing;
+    return this.wallets.createUserWallet(userId, WalletType.SELLER);
+  }
+
   async getBalance(userId: string): Promise<string> {
     const wallet = await this.ensureBuyerWallet(userId);
     return wallet.balance;
