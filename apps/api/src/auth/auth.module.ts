@@ -4,6 +4,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import type { Env } from "../config/env.validation";
 import { UsersModule } from "../users/users.module";
+import { WalletModule } from "../wallet/wallet.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { GoogleStrategy } from "./strategies/google.strategy";
@@ -12,6 +13,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
 @Module({
   imports: [
     UsersModule,
+    WalletModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

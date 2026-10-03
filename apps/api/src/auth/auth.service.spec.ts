@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { UserRole } from "@tradeloop/types";
 import type { User } from "../users/entities/user.entity";
 import { UsersService } from "../users/users.service";
+import { WalletService } from "../wallet/wallet.service";
 import { AuthService } from "./auth.service";
 import type { RequestUser } from "./types";
 
@@ -21,6 +22,10 @@ interface MockUsersService {
   findById: Mock;
   create: Mock;
   setRefreshTokenHash: Mock;
+}
+
+interface MockWalletService {
+  ensureBuyerWallet: Mock;
 }
 
 function fakeRedis() {
@@ -61,6 +66,9 @@ function setup() {
     create: vi.fn(),
     setRefreshTokenHash: vi.fn(),
   };
+  const wallets: MockWalletService = {
+    ensureBuyerWallet: vi.fn(async () => user()),
+  };
   const config = {
     get: (key: string): string => {
       if (key === "JWT_ACCESS_EXPIRY") return "15m";
@@ -70,6 +78,7 @@ function setup() {
   };
   const service = new AuthService(
     users as unknown as UsersService,
+    wallets as unknown as WalletService,
     new JwtService({ secret: TEST_SECRET }),
     config as unknown as ConfigService,
     redis as unknown as Redis,
@@ -77,6 +86,7 @@ function setup() {
   return {
     service,
     users,
+    wallets,
     jwt: new JwtService({ secret: TEST_SECRET }),
     redis,
   };
@@ -89,7 +99,7 @@ describe("AuthService", () => {
 
   describe("register", () => {
     it("creates a user with a hashed password and returns a token pair", async () => {
-      const { service, users } = await setup();
+      const { service, users, wallets } = await setup();
       users.findByEmail.mockResolvedValue(null);
       users.create.mockImplementation(async (data: Partial<User>) => user(data));
       users.setRefreshTokenHash.mockResolvedValue(undefined);
@@ -104,6 +114,7 @@ describe("AuthService", () => {
       expect(users.create).toHaveBeenCalledWith(
         expect.objectContaining({ email: "buyer@tradeloop.test" }),
       );
+      expect(wallets.ensureBuyerWallet).toHaveBeenCalled();
       const storedHash = users.create.mock.calls[0][0].passwordHash as string;
       expect(storedHash).not.toBe("password123");
       expect(await verify(storedHash, "password123")).toBe(true);
