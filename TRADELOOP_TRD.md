@@ -260,6 +260,17 @@ Every entity ID is a UUIDv7, generated in application code by the `BaseEntity` p
 
 **Why app-side over a database default:** PostgreSQL 15 has no built-in `uuidv7()` generator. Generating in `BaseEntity` gives one code path for all entities with no extension dependency. The rule for services: persist entity instances (`repository.create()` then `save()`), never raw literals, so the initializer always runs.
 
+### Data access — Controller → Service → Repository → Database
+
+Every module follows four layers with strict ownership:
+
+- **Controllers** translate HTTP only: validate input via DTOs, call one service method, return the result. No business logic, no queries.
+- **Services** own business logic and transaction boundaries: they decide what should happen, open `QueryRunner` transactions, and orchestrate repository calls. They never issue queries — no `Repository` injection, no `query()` calls. The only `DataSource` use allowed in a service is creating a `QueryRunner`.
+- **Repositories** own all persistence: TypeORM queries for standard CRUD and hand-written SQL for money movement, stock, and usage counters. Transactional methods accept the caller's `QueryRunner` — the exact SQL, the locks it takes, and its failure modes live here and nowhere else.
+- **Entities** are the TypeORM-mapped domain objects passed between these layers.
+
+Per-module files follow `<domain>.repository.ts` next to `<domain>.service.ts` (e.g. `users.repository.ts`). The transaction rule this enables: one service method, one `QueryRunner`, many repository calls — single commit or full rollback.
+
 ### Escrow Implementation — Ledger-based wallet system
 
 Money is never moved by direct balance mutation. The following is explicitly prohibited:
@@ -536,6 +547,7 @@ apps/api/src/
 │   │   └── user.entity.ts
 │   ├── users.controller.ts
 │   ├── users.service.ts
+│   ├── users.repository.ts
 │   └── users.module.ts
 
 ├── seller-profiles/

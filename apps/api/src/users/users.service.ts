@@ -1,35 +1,32 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
-import { User } from "./entities/user.entity";
+import type { User } from "./entities/user.entity";
+import { UsersRepository } from "./users.repository";
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User) private readonly users: Repository<User>,
-  ) {}
+  constructor(private readonly users: UsersRepository) {}
 
   create(data: Partial<User>): Promise<User> {
-    return this.users.save(this.users.create(data));
+    return this.users.create(data);
   }
 
   findById(id: string): Promise<User | null> {
-    return this.users.findOne({ where: { id, deletedAt: IsNull() } });
+    return this.users.findById(id);
   }
 
   findByEmail(email: string): Promise<User | null> {
-    return this.users.findOne({ where: { email, deletedAt: IsNull() } });
+    return this.users.findByEmail(email);
   }
 
   findByGoogleId(googleId: string): Promise<User | null> {
-    return this.users.findOne({ where: { googleId, deletedAt: IsNull() } });
+    return this.users.findByGoogleId(googleId);
   }
 
-  async setRefreshTokenHash(id: string, hash: string | null): Promise<void> {
-    await this.users.update({ id }, { refreshTokenHash: hash });
+  setRefreshTokenHash(id: string, hash: string | null): Promise<void> {
+    return this.users.setRefreshTokenHash(id, hash);
   }
 
-  async linkGoogleId(id: string, googleId: string): Promise<void> {
-    await this.users.update({ id }, { googleId });
+  linkGoogleId(id: string, googleId: string): Promise<void> {
+    return this.users.linkGoogleId(id, googleId);
   }
 }
