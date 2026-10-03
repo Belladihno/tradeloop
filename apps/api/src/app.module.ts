@@ -13,6 +13,8 @@ import { TransformInterceptor } from "./common/interceptors/transform.intercepto
 import { HealthModule } from "./health/health.module";
 import { REDIS_CLIENT, RedisModule } from "./redis/redis.module";
 import { AuthModule } from "./auth/auth.module";
+import { CategoriesModule } from "./categories/categories.module";
+import { ProductsModule } from "./products/products.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -29,6 +31,8 @@ import { UsersModule } from "./users/users.module";
     }),
     AuthModule,
     UsersModule,
+    CategoriesModule,
+    ProductsModule,
     HealthModule,
   ],
   providers: [
