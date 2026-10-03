@@ -260,6 +260,17 @@ Every entity ID is a UUIDv7, generated in application code by the `BaseEntity` p
 
 **Why app-side over a database default:** PostgreSQL 15 has no built-in `uuidv7()` generator. Generating in `BaseEntity` gives one code path for all entities with no extension dependency. The rule for services: persist entity instances (`repository.create()` then `save()`), never raw literals, so the initializer always runs.
 
+### Data access — Controller → Service → Repository → Database
+
+Every module follows four layers with strict ownership:
+
+- **Controllers** translate HTTP only: validate input via DTOs, call one service method, return the result. No business logic, no queries.
+- **Services** own business logic and transaction boundaries: they decide what should happen, open `QueryRunner` transactions, and orchestrate repository calls. They never issue queries — no `Repository` injection, no `query()` calls. The only `DataSource` use allowed in a service is creating a `QueryRunner`.
+- **Repositories** own all persistence: TypeORM queries for standard CRUD and hand-written SQL for money movement, stock, and usage counters. Transactional methods accept the caller's `QueryRunner` — the exact SQL, the locks it takes, and its failure modes live here and nowhere else.
+- **Entities** are the TypeORM-mapped domain objects passed between these layers.
+
+Per-module files follow `<domain>.repository.ts` next to `<domain>.service.ts` (e.g. `users.repository.ts`). The transaction rule this enables: one service method, one `QueryRunner`, many repository calls — single commit or full rollback.
+
 ### Escrow Implementation — Ledger-based wallet system
 
 Money is never moved by direct balance mutation. The following is explicitly prohibited:
@@ -460,6 +471,8 @@ A middleware generates a nanoid for every incoming request. The ID is attached t
 
 All environment variables are validated at application startup using a Zod schema. If `DATABASE_URL` is missing or `JWT_SECRET` is too short, the application fails immediately with a clear error message listing which variables are invalid. It does not start and crash later when the first database query fires.
 
+**Reading config in code:** `config.get(key, { infer: true })` is only used for variables the Zod schema guarantees — required values with no default, or values with validated defaults. It is never used to paper over a missing value. Optional integrations (Google OAuth now; payment, logistics, and email providers in later phases) stay boot-safe with empty credentials so cold start never breaks, and instead fail loud at the feature boundary with an explicit "not configured" error plus a boot-time warning. Misconfiguration is impossible to miss but never prevents unrelated features from running.
+
 ### Database Migrations — TypeORM migrations only, never `synchronize: true`
 
 `synchronize: true` is a TypeORM option that automatically modifies the database schema to match entities at startup. It is a development convenience that has destroyed production databases by dropping columns with data. It is never used in this project, including in development.
@@ -536,6 +549,7 @@ apps/api/src/
 │   │   └── user.entity.ts
 │   ├── users.controller.ts
 │   ├── users.service.ts
+│   ├── users.repository.ts
 │   └── users.module.ts
 
 ├── seller-profiles/

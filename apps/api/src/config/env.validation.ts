@@ -5,8 +5,14 @@ export const envSchema = z.object({
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
 
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
-  JWT_ACCESS_EXPIRY: z.string().default("15m"),
-  JWT_REFRESH_EXPIRY: z.string().default("7d"),
+  JWT_ACCESS_EXPIRY: z
+    .string()
+    .regex(/^\d+[smhd]$/, "Use a format like 15m, 1h, or 7d")
+    .default("15m"),
+  JWT_REFRESH_EXPIRY: z
+    .string()
+    .regex(/^\d+[smhd]$/, "Use a format like 15m, 1h, or 7d")
+    .default("7d"),
 
   GOOGLE_CLIENT_ID: z.string().optional().default(""),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
