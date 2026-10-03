@@ -19,6 +19,7 @@ import type { Env } from "../config/env.validation";
 import { REDIS_CLIENT } from "../redis/redis.module";
 import type { User } from "../users/entities/user.entity";
 import { UsersService } from "../users/users.service";
+import { WalletService } from "../wallet/wallet.service";
 import {
   blocklistKey,
   type RequestUser,
@@ -30,6 +31,7 @@ import {
 export class AuthService {
   constructor(
     private readonly users: UsersService,
+    private readonly wallets: WalletService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
@@ -46,6 +48,7 @@ export class AuthService {
       passwordHash: await hash(input.password),
       role: input.role,
     });
+    await this.wallets.ensureBuyerWallet(user.id);
     return this.buildSession(user);
   }
 
