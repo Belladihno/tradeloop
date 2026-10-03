@@ -15,6 +15,12 @@ export interface RecordTransactionData {
   referenceType: string;
 }
 
+export interface PendingFunding {
+  id: string;
+  amount: string;
+  toWalletId: string;
+}
+
 @Injectable()
 export class WalletRepository {
   constructor(
@@ -65,12 +71,34 @@ export class WalletRepository {
   recordTransaction(
     data: RecordTransactionData,
     runner: QueryRunner,
+    status: TransactionStatus = TransactionStatus.COMPLETED,
   ): Promise<Transaction> {
     return runner.manager.save(
-      runner.manager.create(Transaction, {
-        ...data,
-        status: TransactionStatus.COMPLETED,
-      }),
+      runner.manager.create(Transaction, { ...data, status }),
+    );
+  }
+
+  async findPendingFunding(
+    reference: string,
+    runner: QueryRunner,
+  ): Promise<PendingFunding | null> {
+    const rows = await runner.query(
+      `SELECT "id", "amount", "to_wallet_id" FROM "transactions"
+       WHERE "reference_id" = $1 AND "status" = 'PENDING' FOR UPDATE`,
+      [reference],
+    );
+    const row = rows[0] as
+      | { id: string; amount: string; to_wallet_id: string }
+      | undefined;
+    if (!row) return null;
+    return { id: row.id, amount: String(row.amount), toWalletId: row.to_wallet_id };
+  }
+
+  async markTransactionCompleted(id: string, runner: QueryRunner): Promise<void> {
+    await runner.query(
+      `UPDATE "transactions" SET "status" = 'COMPLETED', "updated_at" = now()
+       WHERE "id" = $1`,
+      [id],
     );
   }
 

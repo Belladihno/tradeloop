@@ -1,5 +1,8 @@
+import { ConfigService } from "@nestjs/config";
+import { DataSource } from "typeorm";
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { WalletType } from "@tradeloop/types";
+import { PaymentService } from "../payments/payment.service";
 import type { Wallet } from "./entities/wallet.entity";
 import { WalletRepository } from "./wallet.repository";
 import { WalletService } from "./wallet.service";
@@ -16,7 +19,12 @@ function setup() {
     createUserWallet: vi.fn(),
     verifyBalance: vi.fn(),
   };
-  const service = new WalletService(wallets as unknown as WalletRepository);
+  const service = new WalletService(
+    wallets as unknown as WalletRepository,
+    {} as PaymentService,
+    {} as ConfigService,
+    {} as DataSource,
+  );
   return { service, wallets };
 }
 

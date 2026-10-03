@@ -20,6 +20,7 @@ import { CategoriesModule } from "./categories/categories.module";
 import { ProductsModule } from "./products/products.module";
 import { SellerProfilesModule } from "./seller-profiles/seller-profiles.module";
 import { UsersModule } from "./users/users.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { UsersModule } from "./users/users.module";
     SellerProfilesModule,
     BuyerProfilesModule,
     AdminModule,
+    WebhooksModule,
     HealthModule,
   ],
   providers: [
