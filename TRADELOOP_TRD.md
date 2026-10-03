@@ -471,6 +471,8 @@ A middleware generates a nanoid for every incoming request. The ID is attached t
 
 All environment variables are validated at application startup using a Zod schema. If `DATABASE_URL` is missing or `JWT_SECRET` is too short, the application fails immediately with a clear error message listing which variables are invalid. It does not start and crash later when the first database query fires.
 
+**Reading config in code:** `config.get(key, { infer: true })` is only used for variables the Zod schema guarantees — required values with no default, or values with validated defaults. It is never used to paper over a missing value. Optional integrations (Google OAuth now; payment, logistics, and email providers in later phases) stay boot-safe with empty credentials so cold start never breaks, and instead fail loud at the feature boundary with an explicit "not configured" error plus a boot-time warning. Misconfiguration is impossible to miss but never prevents unrelated features from running.
+
 ### Database Migrations — TypeORM migrations only, never `synchronize: true`
 
 `synchronize: true` is a TypeORM option that automatically modifies the database schema to match entities at startup. It is a development convenience that has destroyed production databases by dropping columns with data. It is never used in this project, including in development.

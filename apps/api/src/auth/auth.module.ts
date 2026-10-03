@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Logger, Module, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
@@ -24,4 +24,14 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
   providers: [AuthService, JwtStrategy, GoogleStrategy],
   exports: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule implements OnModuleInit {
+  private readonly logger = new Logger(AuthModule.name);
+
+  constructor(private readonly config: ConfigService<Env, true>) {}
+
+  onModuleInit(): void {
+    if (!this.config.get("GOOGLE_CLIENT_ID", { infer: true })) {
+      this.logger.warn("GOOGLE_CLIENT_ID is not set — Google sign-in is disabled");
+    }
+  }
+}
