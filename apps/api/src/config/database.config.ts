@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from "@nestjs/typeorm";
 import { DataSource, DataSourceOptions } from "typeorm";
+import { SnakeNamingStrategy } from "../common/database/snake-naming.strategy";
 import type { Env } from "./env.validation";
 
 @Injectable()
@@ -24,6 +25,7 @@ export function baseDataSourceOptions(databaseUrl: string): DataSourceOptions {
     url: databaseUrl,
     // Never true — schema changes go through versioned migrations only.
     synchronize: false,
+    namingStrategy: new SnakeNamingStrategy(),
     entities: [`${__dirname}/../**/*.entity.{js,ts}`],
     migrations: [`${__dirname}/../migrations/*.{js,ts}`],
   };

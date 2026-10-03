@@ -10,6 +10,7 @@ import helmet from "@fastify/helmet";
 import { ZodValidationPipe } from "nestjs-zod";
 import { AppModule } from "./app.module";
 import { registerRequestIdHook } from "./common/middleware/request-id.middleware";
+import { SanitizePipe } from "./common/pipes/sanitize.pipe";
 import type { Env } from "./config/env.validation";
 
 async function bootstrap(): Promise<void> {
@@ -28,7 +29,7 @@ async function bootstrap(): Promise<void> {
   registerRequestIdHook(app.getHttpAdapter().getInstance());
   app.enableCors({ origin: [webUrl, adminUrl], credentials: true });
   app.setGlobalPrefix("api/v1");
-  app.useGlobalPipes(new ZodValidationPipe());
+  app.useGlobalPipes(new ZodValidationPipe(), new SanitizePipe());
 
   await app.listen(port, "0.0.0.0");
   Logger.log(`API listening on port ${port}`, "Bootstrap");
