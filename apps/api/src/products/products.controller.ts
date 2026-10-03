@@ -29,7 +29,7 @@ export class ProductsController {
   @Roles(UserRole.SELLER, UserRole.ADMIN)
   @Post()
   create(@CurrentUser() user: RequestUser, @Body() dto: CreateProductDto) {
-    return this.products.create(user.id, dto);
+    return this.products.create(user.id, user.role, dto);
   }
 
   @Get()

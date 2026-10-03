@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository, type QueryRunner } from "typeorm";
+import { In, IsNull, Repository, type QueryRunner } from "typeorm";
 import type { ProductSort } from "@tradeloop/types";
 import { InsufficientStockException } from "../common/exceptions/insufficient-stock.exception";
 import { uniqueSlug } from "../common/utils/slug";
@@ -44,6 +44,11 @@ export class ProductsRepository {
     return this.products.findOne({ where: { slug, deletedAt: IsNull() } });
   }
 
+  async findByIds(ids: string[]): Promise<Product[]> {
+    if (ids.length === 0) return [];
+    return this.products.find({ where: { id: In(ids), deletedAt: IsNull() } });
+  }
+
   async updateFields(id: string, data: Partial<Product>): Promise<void> {
     await this.products.update({ id }, data);
   }
@@ -67,6 +72,18 @@ export class ProductsRepository {
       [quantity, productId],
     );
     if (rows.length === 0) throw new InsufficientStockException();
+  }
+
+  async restoreStock(
+    productId: string,
+    quantity: number,
+    runner: QueryRunner,
+  ): Promise<void> {
+    await runner.query(
+      `UPDATE "products" SET "stock" = "stock" + $1, "updated_at" = now()
+       WHERE "id" = $2`,
+      [quantity, productId],
+    );
   }
 
   async listPage(filters: ProductListFilters): Promise<ProductListPage> {

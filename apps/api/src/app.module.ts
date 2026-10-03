@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ClassSerializerInterceptor } from "@nestjs/common";
+import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
 import { TypeOrmModule } from "@nestjs/typeorm";
@@ -16,7 +17,10 @@ import { REDIS_CLIENT, RedisModule } from "./redis/redis.module";
 import { AuthModule } from "./auth/auth.module";
 import { AdminModule } from "./admin/admin.module";
 import { BuyerProfilesModule } from "./buyer-profiles/buyer-profiles.module";
+import { CartModule } from "./cart/cart.module";
 import { CategoriesModule } from "./categories/categories.module";
+import { IdempotencyModule } from "./idempotency/idempotency.module";
+import { OrdersModule } from "./orders/orders.module";
 import { ProductsModule } from "./products/products.module";
 import { SellerProfilesModule } from "./seller-profiles/seller-profiles.module";
 import { UsersModule } from "./users/users.module";
@@ -26,6 +30,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     TypeOrmModule.forRootAsync({ useClass: DatabaseConfig }),
+    ScheduleModule.forRoot(),
     RedisModule,
     CryptoModule,
     ThrottlerModule.forRootAsync({
@@ -42,6 +47,9 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     SellerProfilesModule,
     BuyerProfilesModule,
     AdminModule,
+    CartModule,
+    OrdersModule,
+    IdempotencyModule,
     WebhooksModule,
     HealthModule,
   ],
