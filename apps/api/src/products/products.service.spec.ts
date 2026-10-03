@@ -7,6 +7,7 @@ import { describe, expect, it, vi, type Mock } from "vitest";
 import { UserRole } from "@tradeloop/types";
 import { CategoryRepository } from "../categories/category.repository";
 import type { Category } from "../categories/entities/category.entity";
+import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
 import type { Product } from "./entities/product.entity";
 import { ProductsRepository } from "./products.repository";
 import { ProductsService } from "./products.service";
@@ -67,11 +68,13 @@ function setup() {
     findBySlug: vi.fn(),
     findByIds: vi.fn(),
   };
+  const sellers = { assertSellerActive: vi.fn(async () => undefined) };
   const service = new ProductsService(
     products as unknown as ProductsRepository,
     categories as unknown as CategoryRepository,
+    sellers as unknown as SellerProfilesService,
   );
-  return { service, products, categories };
+  return { service, products, categories, sellers };
 }
 
 describe("ProductsService", () => {
@@ -80,7 +83,7 @@ describe("ProductsService", () => {
     categories.findById.mockResolvedValue(category());
     products.create.mockResolvedValue(product());
 
-    const result = await service.create("seller-1", {
+    const result = await service.create("seller-1", UserRole.SELLER, {
       name: "Ankara Fabric",
       description: "Woven cotton",
       price: "2500.00",
@@ -95,12 +98,29 @@ describe("ProductsService", () => {
     expect(result.category).toEqual({ id: "cat-1", name: "Fabrics", slug: "fabrics" });
   });
 
+  it("blocks product creation for inactive sellers", async () => {
+    const { service, products, sellers } = setup();
+    sellers.assertSellerActive.mockRejectedValue(
+      new ForbiddenException("Seller account is not active"),
+    );
+
+    await expect(
+      service.create("seller-1", UserRole.SELLER, {
+        name: "Ankara Fabric",
+        price: "2500.00",
+        categoryId: "cat-1",
+        stock: 1,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(products.create).not.toHaveBeenCalled();
+  });
+
   it("rejects products in unknown categories", async () => {
     const { service, products, categories } = setup();
     categories.findById.mockResolvedValue(null);
 
     await expect(
-      service.create("seller-1", {
+      service.create("seller-1", UserRole.SELLER, {
         name: "Ankara Fabric",
         price: "2500.00",
         categoryId: "missing",

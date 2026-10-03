@@ -12,6 +12,7 @@ import type {
 } from "@tradeloop/validators";
 import { CategoryRepository } from "../categories/category.repository";
 import type { Category } from "../categories/entities/category.entity";
+import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
 import type { Product } from "./entities/product.entity";
 import { ProductsRepository } from "./products.repository";
 
@@ -20,9 +21,17 @@ export class ProductsService {
   constructor(
     private readonly products: ProductsRepository,
     private readonly categories: CategoryRepository,
+    private readonly sellers: SellerProfilesService,
   ) {}
 
-  async create(sellerId: string, input: CreateProductInput): Promise<ProductWithCategory> {
+  async create(
+    sellerId: string,
+    role: UserRole,
+    input: CreateProductInput,
+  ): Promise<ProductWithCategory> {
+    if (role !== UserRole.ADMIN) {
+      await this.sellers.assertSellerActive(sellerId);
+    }
     const category = await this.requireCategory(input.categoryId);
     const product = await this.products.create({
       ...input,

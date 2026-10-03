@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -55,6 +56,13 @@ export class SellerProfilesService {
     const profile = await this.profiles.findByUserId(userId);
     if (!profile) throw new NotFoundException("Seller profile not found");
     return profile;
+  }
+
+  async assertSellerActive(userId: string): Promise<void> {
+    const profile = await this.profiles.findByUserId(userId);
+    if (!profile || profile.status !== SellerStatus.ACTIVE) {
+      throw new ForbiddenException("Seller account is not active");
+    }
   }
 
   async review(id: string): Promise<SellerProfile> {

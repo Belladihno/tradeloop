@@ -3,6 +3,10 @@ import { ConfigService } from "@nestjs/config";
 import { createHmac, timingSafeEqual } from "crypto";
 import type { Env } from "../../config/env.validation";
 import { PaymentProviderException } from "../../common/exceptions/payment-provider.exception";
+import {
+  fromMinorUnits as koboToDecimal,
+  toMinorUnits as toKobo,
+} from "../../common/utils/money";
 import type {
   BankTransferInput,
   BankTransferResult,
@@ -15,14 +19,7 @@ import type {
 
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
 
-export function toKobo(amount: string): number {
-  const [naira, kobo = ""] = amount.split(".");
-  return Number(naira) * 100 + Number(`${kobo}00`.slice(0, 2));
-}
-
-export function koboToDecimal(kobo: number): string {
-  return (kobo / 100).toFixed(2);
-}
+export { toKobo, koboToDecimal };
 
 interface PaystackApiResponse<T> {
   status: boolean;
