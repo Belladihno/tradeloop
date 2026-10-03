@@ -10,11 +10,15 @@ import { validateEnv } from "./config/env.validation";
 import { DatabaseConfig } from "./config/database.config";
 import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
 import { TransformInterceptor } from "./common/interceptors/transform.interceptor";
+import { CryptoModule } from "./common/crypto/crypto.module";
 import { HealthModule } from "./health/health.module";
 import { REDIS_CLIENT, RedisModule } from "./redis/redis.module";
 import { AuthModule } from "./auth/auth.module";
+import { AdminModule } from "./admin/admin.module";
+import { BuyerProfilesModule } from "./buyer-profiles/buyer-profiles.module";
 import { CategoriesModule } from "./categories/categories.module";
 import { ProductsModule } from "./products/products.module";
+import { SellerProfilesModule } from "./seller-profiles/seller-profiles.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -22,6 +26,7 @@ import { UsersModule } from "./users/users.module";
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     TypeOrmModule.forRootAsync({ useClass: DatabaseConfig }),
     RedisModule,
+    CryptoModule,
     ThrottlerModule.forRootAsync({
       inject: [REDIS_CLIENT],
       useFactory: (redis: Redis) => ({
@@ -33,6 +38,9 @@ import { UsersModule } from "./users/users.module";
     UsersModule,
     CategoriesModule,
     ProductsModule,
+    SellerProfilesModule,
+    BuyerProfilesModule,
+    AdminModule,
     HealthModule,
   ],
   providers: [

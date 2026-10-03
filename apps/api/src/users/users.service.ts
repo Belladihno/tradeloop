@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { UserRole } from "@tradeloop/types";
 import type { User } from "./entities/user.entity";
 import { UsersRepository } from "./users.repository";
 
@@ -24,6 +25,10 @@ export class UsersService {
 
   setRefreshTokenHash(id: string, hash: string | null): Promise<void> {
     return this.users.setRefreshTokenHash(id, hash);
+  }
+
+  setRole(id: string, role: UserRole): Promise<void> {
+    return this.users.setRole(id, role);
   }
 
   linkGoogleId(id: string, googleId: string): Promise<void> {

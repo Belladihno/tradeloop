@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
+import { UserRole } from "@tradeloop/types";
 import { User } from "./entities/user.entity";
 
 @Injectable()
@@ -27,6 +28,10 @@ export class UsersRepository {
 
   async setRefreshTokenHash(id: string, hash: string | null): Promise<void> {
     await this.repo.update({ id }, { refreshTokenHash: hash });
+  }
+
+  async setRole(id: string, role: UserRole): Promise<void> {
+    await this.repo.update({ id }, { role });
   }
 
   async linkGoogleId(id: string, googleId: string): Promise<void> {
