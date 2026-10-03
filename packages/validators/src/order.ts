@@ -21,12 +21,14 @@ export const shippingAddressSchema = z.object({
 export const createOrderSchema = z.object({
   items: z.array(orderItemSchema).min(1).max(20),
   shippingAddress: shippingAddressSchema,
+  discountCode: z.string().trim().max(20).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
 export const checkoutCartSchema = z.object({
   shippingAddress: shippingAddressSchema,
+  discountCode: z.string().trim().max(20).optional(),
 });
 
 export type CheckoutCartInput = z.infer<typeof checkoutCartSchema>;

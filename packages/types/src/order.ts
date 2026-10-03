@@ -28,6 +28,7 @@ export interface Order {
   discountedAmount: string | null;
   totalAmount: string;
   commissionAmount: string | null;
+  discountId: string | null;
   shippingAddress: ShippingAddress;
   createdAt: Date;
   updatedAt: Date;

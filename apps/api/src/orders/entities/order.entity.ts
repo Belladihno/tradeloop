@@ -30,6 +30,9 @@ export class Order extends BaseEntity {
   @Column({ type: "numeric", precision: 14, scale: 2, nullable: true })
   commissionAmount!: string | null;
 
+  @Column({ type: "uuid", nullable: true })
+  discountId!: string | null;
+
   @Column({ type: "jsonb" })
   shippingAddress!: ShippingAddress;
 }

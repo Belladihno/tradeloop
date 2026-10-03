@@ -8,10 +8,12 @@ import { describe, expect, it, vi, type Mock } from "vitest";
 import { OrderStatus, UserRole } from "@tradeloop/types";
 import { CartRepository } from "../cart/cart.repository";
 import { IdempotencyService } from "../idempotency/idempotency.service";
+import { DiscountRejectedException } from "../common/exceptions/discount-rejected.exception";
 import { InvalidStateTransitionException } from "../common/exceptions/invalid-state-transition.exception";
 import { ProductsRepository } from "../products/products.repository";
 import type { Product } from "../products/entities/product.entity";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
+import { DiscountService } from "../discounts/discount.service";
 import { WalletRepository } from "../wallet/wallet.repository";
 import { WalletService } from "../wallet/wallet.service";
 import type { Order } from "./entities/order.entity";
@@ -83,6 +85,11 @@ function setup() {
   };
   const walletService = { ensureBuyerWallet: vi.fn() };
   const sellers = { assertSellerActive: vi.fn(async () => undefined) };
+  const discounts = {
+    resolveForGroup: vi.fn(async () => null),
+    claimUsage: vi.fn(),
+    recordRedemption: vi.fn(),
+  };
   const idempotency = { findResponse: vi.fn(), saveResponse: vi.fn() };
   const queryRunner = runner();
   const dataSource = { createQueryRunner: vi.fn(() => queryRunner) };
@@ -93,10 +100,11 @@ function setup() {
     wallets as unknown as WalletRepository,
     walletService as unknown as WalletService,
     sellers as unknown as SellerProfilesService,
+    discounts as unknown as DiscountService,
     idempotency as unknown as IdempotencyService,
     dataSource as unknown as DataSource,
   );
-  return { service, orders, carts, products, wallets, walletService, sellers, idempotency, state };
+  return { service, orders, carts, products, wallets, walletService, sellers, discounts, idempotency, state };
 }
 
 const ADDRESS = { line1: "1 Adeola St", city: "Lagos", country: "NG" };
@@ -265,5 +273,77 @@ describe("OrdersService", () => {
     await expect(
       ctx.service.getForUser("buyer-1", UserRole.BUYER, "missing"),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("applies discount codes and records redemptions with request metadata", async () => {
+    const ctx = setup();
+    ctx.products.findByIds.mockResolvedValue([
+      product({ id: "p-1", sellerId: "seller-1", price: "2500.00" }),
+    ]);
+    ctx.walletService.ensureBuyerWallet.mockResolvedValue({ id: "buyer-wallet" });
+    ctx.wallets.findSystemWallet.mockResolvedValue({ id: "escrow-wallet" });
+    ctx.orders.createOrder.mockImplementation(async (data: Partial<Order>) => ({
+      ...order(),
+      ...data,
+      id: "order-1",
+    }));
+    ctx.orders.addItems.mockImplementation(async (items: unknown[]) => items);
+    ctx.discounts.resolveForGroup.mockResolvedValue({
+      discount: { id: "discount-1" },
+      deductionMinor: 50000,
+    });
+
+    const result = await ctx.service.create(
+      "buyer-1",
+      {
+        items: [{ productId: "p-1", quantity: 2 }],
+        shippingAddress: ADDRESS,
+        discountCode: "SAVE10",
+      },
+      undefined,
+      { ipAddress: "1.2.3.4", userAgent: "test-agent" },
+    );
+
+    expect(result.orders[0].totalAmount).toBe("4500.00");
+    expect(result.orders[0].discountedAmount).toBe("500.00");
+    expect(result.orders[0].discountId).toBe("discount-1");
+    expect(ctx.wallets.debitAtomic).toHaveBeenCalledWith(
+      "buyer-wallet",
+      "4500.00",
+      expect.anything(),
+    );
+    expect(ctx.discounts.claimUsage).toHaveBeenCalledWith("discount-1", expect.anything());
+    expect(ctx.discounts.recordRedemption).toHaveBeenCalledWith(
+      expect.objectContaining({
+        discountId: "discount-1",
+        orderId: "order-1",
+        userId: "buyer-1",
+        amountDeducted: "500.00",
+        ipAddress: "1.2.3.4",
+        userAgent: "test-agent",
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("rejects invalid discount codes without charging", async () => {
+    const ctx = setup();
+    ctx.products.findByIds.mockResolvedValue([
+      product({ id: "p-1", sellerId: "seller-1", price: "2500.00" }),
+    ]);
+    ctx.walletService.ensureBuyerWallet.mockResolvedValue({ id: "buyer-wallet" });
+    ctx.wallets.findSystemWallet.mockResolvedValue({ id: "escrow-wallet" });
+    ctx.discounts.resolveForGroup.mockRejectedValue(
+      new DiscountRejectedException("Discount code is invalid"),
+    );
+
+    await expect(
+      ctx.service.create("buyer-1", {
+        items: [{ productId: "p-1", quantity: 1 }],
+        shippingAddress: ADDRESS,
+        discountCode: "NOPE",
+      }),
+    ).rejects.toBeInstanceOf(DiscountRejectedException);
+    expect(ctx.orders.createOrder).not.toHaveBeenCalled();
   });
 });

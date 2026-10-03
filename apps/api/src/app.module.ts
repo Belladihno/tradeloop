@@ -19,6 +19,7 @@ import { AdminModule } from "./admin/admin.module";
 import { BuyerProfilesModule } from "./buyer-profiles/buyer-profiles.module";
 import { CartModule } from "./cart/cart.module";
 import { CategoriesModule } from "./categories/categories.module";
+import { DiscountsModule } from "./discounts/discounts.module";
 import { IdempotencyModule } from "./idempotency/idempotency.module";
 import { OrdersModule } from "./orders/orders.module";
 import { ProductsModule } from "./products/products.module";
@@ -50,6 +51,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     CartModule,
     OrdersModule,
     IdempotencyModule,
+    DiscountsModule,
     WebhooksModule,
     HealthModule,
   ],
