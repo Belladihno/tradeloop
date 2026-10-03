@@ -17,6 +17,7 @@ import type { CreateOrderInput } from "@tradeloop/validators";
 import { InvalidStateTransitionException } from "../common/exceptions/invalid-state-transition.exception";
 import { fromMinorUnits, toMinorUnits } from "../common/utils/money";
 import { CartRepository } from "../cart/cart.repository";
+import { DiscountService } from "../discounts/discount.service";
 import { IdempotencyService } from "../idempotency/idempotency.service";
 import { ProductsRepository } from "../products/products.repository";
 import type { Product } from "../products/entities/product.entity";
@@ -35,6 +36,11 @@ export interface CreateOrderResult {
   orders: OrderWithItems[];
 }
 
+export interface RequestMeta {
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 const CANCELLABLE = [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.SHIPPED];
 
 @Injectable()
@@ -46,6 +52,7 @@ export class OrdersService {
     private readonly wallets: WalletRepository,
     private readonly walletService: WalletService,
     private readonly sellers: SellerProfilesService,
+    private readonly discounts: DiscountService,
     private readonly idempotency: IdempotencyService,
     private readonly dataSource: DataSource,
   ) {}
@@ -54,6 +61,7 @@ export class OrdersService {
     buyerId: string,
     input: CreateOrderInput,
     idempotencyKey?: string,
+    meta: RequestMeta = {},
   ): Promise<CreateOrderResult> {
     if (idempotencyKey) {
       const stored = await this.idempotency.findResponse(idempotencyKey, buyerId);
@@ -63,6 +71,8 @@ export class OrdersService {
       buyerId,
       input.items,
       input.shippingAddress,
+      input.discountCode,
+      meta,
     );
     if (idempotencyKey) {
       const saved = await this.idempotency.saveResponse(
@@ -78,7 +88,9 @@ export class OrdersService {
   async createFromCart(
     buyerId: string,
     shippingAddress: ShippingAddress,
+    discountCode?: string,
     idempotencyKey?: string,
+    meta: RequestMeta = {},
   ): Promise<CreateOrderResult> {
     const cart = await this.carts.findByBuyer(buyerId);
     const items = cart ? await this.carts.findItems(cart.id) : [];
@@ -91,6 +103,8 @@ export class OrdersService {
       buyerId,
       items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       shippingAddress,
+      discountCode,
+      meta,
       cart?.id,
     );
     if (idempotencyKey) {
@@ -199,6 +213,8 @@ export class OrdersService {
     buyerId: string,
     lines: CheckoutLine[],
     shippingAddress: ShippingAddress,
+    discountCode?: string,
+    meta: RequestMeta = {},
     clearCartId?: string,
   ): Promise<CreateOrderResult> {
     const catalog = await this.products.findByIds(lines.map((line) => line.productId));
@@ -228,11 +244,24 @@ export class OrdersService {
     await runner.startTransaction();
     try {
       for (const [sellerId, entries] of groups) {
-        const totalMinor = entries.reduce(
+        const subtotalMinor = entries.reduce(
           (sum, entry) => sum + toMinorUnits(entry.product.price) * entry.quantity,
           0,
         );
-        const total = fromMinorUnits(totalMinor);
+        const evaluation = await this.discounts.resolveForGroup(
+          buyerId,
+          discountCode,
+          sellerId,
+          entries.map((entry) => ({
+            productId: entry.product.id,
+            categoryId: entry.product.categoryId,
+            sellerId,
+            lineTotalMinor: toMinorUnits(entry.product.price) * entry.quantity,
+          })),
+        );
+        const deductionMinor = evaluation?.deductionMinor ?? 0;
+        const total = fromMinorUnits(subtotalMinor - deductionMinor);
+        const discounted = deductionMinor > 0 ? fromMinorUnits(deductionMinor) : null;
         for (const entry of entries) {
           await this.products.decrementStock(entry.product.id, entry.quantity, runner);
         }
@@ -241,10 +270,11 @@ export class OrdersService {
             buyerId,
             sellerId,
             status: OrderStatus.PENDING,
-            originalAmount: total,
-            discountedAmount: null,
+            originalAmount: fromMinorUnits(subtotalMinor),
+            discountedAmount: discounted,
             totalAmount: total,
             commissionAmount: null,
+            discountId: evaluation?.discount.id ?? null,
             shippingAddress,
           },
           runner,
@@ -272,6 +302,20 @@ export class OrdersService {
           },
           runner,
         );
+        if (evaluation && discounted) {
+          await this.discounts.claimUsage(evaluation.discount.id, runner);
+          await this.discounts.recordRedemption(
+            {
+              discountId: evaluation.discount.id,
+              orderId: order.id,
+              userId: buyerId,
+              amountDeducted: discounted,
+              ipAddress: meta.ipAddress,
+              userAgent: meta.userAgent,
+            },
+            runner,
+          );
+        }
         created.push({ ...order, items });
       }
       if (clearCartId) {

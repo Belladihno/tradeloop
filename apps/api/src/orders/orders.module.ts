@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { CartModule } from "../cart/cart.module";
+import { DiscountsModule } from "../discounts/discounts.module";
 import { IdempotencyModule } from "../idempotency/idempotency.module";
 import { ProductsModule } from "../products/products.module";
 import { SellerProfilesModule } from "../seller-profiles/seller-profiles.module";
@@ -18,6 +19,7 @@ import { OrdersService } from "./orders.service";
     ProductsModule,
     WalletModule,
     SellerProfilesModule,
+    DiscountsModule,
     IdempotencyModule,
   ],
   controllers: [OrdersController],

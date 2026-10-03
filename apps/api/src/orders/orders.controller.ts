@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
+  Ip,
   Param,
   Patch,
   Post,
@@ -28,8 +30,10 @@ export class OrdersController {
     @CurrentUser() user: RequestUser,
     @Body() dto: CreateOrderDto,
     @IdempotencyKey() idempotencyKey?: string,
+    @Ip() ip?: string,
+    @Headers("user-agent") userAgent?: string,
   ) {
-    return this.orders.create(user.id, dto, idempotencyKey);
+    return this.orders.create(user.id, dto, idempotencyKey, { ipAddress: ip, userAgent });
   }
 
   @Post("from-cart")
@@ -37,8 +41,13 @@ export class OrdersController {
     @CurrentUser() user: RequestUser,
     @Body() dto: CheckoutCartDto,
     @IdempotencyKey() idempotencyKey?: string,
+    @Ip() ip?: string,
+    @Headers("user-agent") userAgent?: string,
   ) {
-    return this.orders.createFromCart(user.id, dto.shippingAddress, idempotencyKey);
+    return this.orders.createFromCart(user.id, dto.shippingAddress, dto.discountCode, idempotencyKey, {
+      ipAddress: ip,
+      userAgent,
+    });
   }
 
   @Get()
