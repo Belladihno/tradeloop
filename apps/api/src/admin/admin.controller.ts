@@ -14,6 +14,8 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import type { RequestUser } from "../auth/types";
 import { ResolveDisputeDto } from "../disputes/dto/resolve-dispute.dto";
 import { DisputeService } from "../disputes/disputes.service";
+import { RejectPayoutDto } from "../payouts/dto/reject-payout.dto";
+import { PayoutsService } from "../payouts/payouts.service";
 import { UpdateCommissionDto } from "../seller-profiles/dto/update-commission.dto";
 import { RejectSellerDto } from "../seller-profiles/dto/reject-seller.dto";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
@@ -25,6 +27,7 @@ export class AdminController {
   constructor(
     private readonly sellers: SellerProfilesService,
     private readonly disputes: DisputeService,
+    private readonly payouts: PayoutsService,
   ) {}
 
   @Patch("sellers/:id/review")
@@ -57,5 +60,19 @@ export class AdminController {
     @Body() dto: ResolveDisputeDto,
   ) {
     return this.disputes.resolve(id, admin.id, dto.resolution);
+  }
+
+  @Patch("payouts/:id/approve")
+  approvePayout(@CurrentUser() admin: RequestUser, @Param("id", ParseUUIDPipe) id: string) {
+    return this.payouts.approve(id, admin.id);
+  }
+
+  @Patch("payouts/:id/reject")
+  rejectPayout(
+    @CurrentUser() admin: RequestUser,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: RejectPayoutDto,
+  ) {
+    return this.payouts.reject(id, admin.id, dto.reason);
   }
 }
