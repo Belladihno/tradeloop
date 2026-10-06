@@ -7,9 +7,13 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { UserRole } from "@tradeloop/types";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
+import type { RequestUser } from "../auth/types";
+import { ResolveDisputeDto } from "../disputes/dto/resolve-dispute.dto";
+import { DisputeService } from "../disputes/disputes.service";
 import { UpdateCommissionDto } from "../seller-profiles/dto/update-commission.dto";
 import { RejectSellerDto } from "../seller-profiles/dto/reject-seller.dto";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
@@ -18,7 +22,10 @@ import { SellerProfilesService } from "../seller-profiles/seller-profiles.servic
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class AdminController {
-  constructor(private readonly sellers: SellerProfilesService) {}
+  constructor(
+    private readonly sellers: SellerProfilesService,
+    private readonly disputes: DisputeService,
+  ) {}
 
   @Patch("sellers/:id/review")
   review(@Param("id", ParseUUIDPipe) id: string) {
@@ -41,5 +48,14 @@ export class AdminController {
     @Body() dto: UpdateCommissionDto,
   ) {
     return this.sellers.updateCommission(id, dto.commissionRate);
+  }
+
+  @Patch("disputes/:id/resolve")
+  resolveDispute(
+    @CurrentUser() admin: RequestUser,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: ResolveDisputeDto,
+  ) {
+    return this.disputes.resolve(id, admin.id, dto.resolution);
   }
 }

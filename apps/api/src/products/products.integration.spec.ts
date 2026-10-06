@@ -1,7 +1,5 @@
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from "@testcontainers/postgresql";
+import Redis from "ioredis";
+import { startTestDatabase, type TestDatabase } from "../test/test-database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import { ThrottlerGuard } from "@nestjs/throttler";
@@ -19,16 +17,18 @@ import { User } from "../users/entities/user.entity";
 import { UsersService } from "../users/users.service";
 import { Init1759400000000 } from "../migrations/1759400000000-Init";
 import { CreateUsers1759500000000 } from "../migrations/1759500000000-CreateUsers";
+import { ConfigService } from "@nestjs/config";
 import { REDIS_CLIENT } from "../redis/redis.module";
 import { Category } from "../categories/entities/category.entity";
 import { Product } from "./entities/product.entity";
 import { ProductsRepository } from "./products.repository";
 import { ProductsService } from "./products.service";
+import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
 
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 180_000 });
 
 let app: NestFastifyApplication | undefined;
-let container: StartedPostgreSqlContainer | undefined;
+let container: TestDatabase | undefined;
 let dataSource: DataSource | undefined;
 let products: ProductsService;
 let categories: CategoriesService;
@@ -36,32 +36,14 @@ let users: UsersService;
 let repository: ProductsRepository;
 let sellerId = "";
 
-const redisStore = new Map<string, string>();
-const redisFake = new Proxy(
-  {
-    get: async (key: string): Promise<string | null> =>
-      redisStore.get(key) ?? null,
-    set: async (key: string, value: string): Promise<string> => {
-      redisStore.set(key, value);
-      return "OK";
-    },
-    exists: async (key: string): Promise<number> =>
-      redisStore.has(key) ? 1 : 0,
-    del: async (key: string): Promise<number> =>
-      redisStore.delete(key) ? 1 : 0,
-  },
-  {
-    get: (target, prop) =>
-      prop in target
-        ? target[prop as keyof typeof target]
-        : async (): Promise<number> => 0,
-  },
+const redisClient = new Redis(
+  process.env.REDIS_URL ?? "redis://localhost:16379",
+  { maxRetriesPerRequest: 5 },
 );
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:15-alpine").start();
+  container = await startTestDatabase();
   process.env.DATABASE_URL = container.getConnectionUri();
-  process.env.REDIS_URL = "redis://localhost:6379";
   process.env.JWT_SECRET = "integration-test-secret-minimum-32-chars";
   process.env.JWT_ACCESS_EXPIRY = "15m";
   process.env.JWT_REFRESH_EXPIRY = "7d";
@@ -69,6 +51,13 @@ beforeAll(async () => {
   const { Wallets1759600000000 } = await import("../migrations/1759600000000-Wallets");
   const { Categories1759700000000 } = await import("../migrations/1759700000000-Categories");
   const { Products1759800000000 } = await import("../migrations/1759800000000-Products");
+  const { SellerProfiles1759900000000 } = await import("../migrations/1759900000000-SellerProfiles");
+  const { BuyerProfiles1759910000000 } = await import("../migrations/1759910000000-BuyerProfiles");
+  const { Carts1760000000000 } = await import("../migrations/1760000000000-Carts");
+  const { Orders1760010000000 } = await import("../migrations/1760010000000-Orders");
+  const { IdempotencyKeys1760020000000 } = await import("../migrations/1760020000000-IdempotencyKeys");
+  const { Discounts1760100000000 } = await import("../migrations/1760100000000-Discounts");
+  const { Disputes1760200000000 } = await import("../migrations/1760200000000-Disputes");
 
   dataSource = new DataSource({
     type: "postgres",
@@ -80,6 +69,13 @@ beforeAll(async () => {
       Wallets1759600000000,
       Categories1759700000000,
       Products1759800000000,
+      SellerProfiles1759900000000,
+      BuyerProfiles1759910000000,
+      Carts1760000000000,
+      Orders1760010000000,
+      IdempotencyKeys1760020000000,
+      Discounts1760100000000,
+      Disputes1760200000000,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,
@@ -89,7 +85,9 @@ beforeAll(async () => {
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(REDIS_CLIENT)
-    .useValue(redisFake)
+    .useValue(redisClient)
+    .overrideProvider(ConfigService)
+    .useValue({ get: (key: string) => process.env[key] })
     .overrideGuard(ThrottlerGuard)
     .useValue({ canActivate: () => true })
     .compile();
@@ -110,14 +108,23 @@ beforeAll(async () => {
   const seller = await users.create({
     email: "seller@tradeloop.test",
     passwordHash: "hashed",
-    role: UserRole.SELLER,
+    role: UserRole.BUYER,
   });
+  const profiles = moduleRef.get(SellerProfilesService);
+  const profile = await profiles.onboard(seller.id, {
+    storeName: "Catalog Store",
+    bankAccountNumber: "0123456789",
+    bankCode: "058",
+  });
+  await profiles.review(profile.id);
+  await profiles.approve(profile.id);
   sellerId = seller.id;
 });
 
 afterAll(async () => {
   await app?.close();
   await dataSource?.destroy();
+  await redisClient.quit().catch(() => undefined);
   await container?.stop();
 });
 
@@ -140,7 +147,7 @@ describe("catalog", () => {
   });
 
   it("finds products through full-text search", async () => {
-    await products.create(sellerId, {
+    await products.create(sellerId, UserRole.SELLER, {
       name: "Ankara Cotton Fabric",
       description: "Vibrant woven cotton for traditional wear",
       price: "2500.00",
@@ -162,7 +169,7 @@ describe("catalog", () => {
   });
 
   it("filters by price range and stock", async () => {
-    await products.create(sellerId, {
+    await products.create(sellerId, UserRole.SELLER, {
       name: "Aso Oke Prestige",
       description: "Hand-woven ceremonial cloth",
       price: "15000.00",
@@ -192,7 +199,7 @@ describe("catalog", () => {
 
   it("pages cursors without duplicates or gaps", async () => {
     for (let index = 0; index < 25; index++) {
-      await products.create(sellerId, {
+      await products.create(sellerId, UserRole.SELLER, {
         name: `Paged Cloth ${index}`,
         description: "Bulk listing",
         price: `${1000 + index}.00`,
@@ -234,7 +241,7 @@ describe("catalog", () => {
   });
 
   it("lets only one buyer take the last unit", async () => {
-    const product = await products.create(sellerId, {
+    const product = await products.create(sellerId, UserRole.SELLER, {
       name: "Last Piece Shirt",
       description: "One unit only",
       price: "5000.00",
@@ -266,7 +273,7 @@ describe("catalog", () => {
   });
 
   it("hides soft-deleted products from listing and detail", async () => {
-    const product = await products.create(sellerId, {
+    const product = await products.create(sellerId, UserRole.SELLER, {
       name: "Vanishing Vase",
       description: "Here today",
       price: "3000.00",

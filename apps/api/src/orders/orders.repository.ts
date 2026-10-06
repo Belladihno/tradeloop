@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, IsNull, Repository, type QueryRunner } from "typeorm";
+import { OrderStatus } from "@tradeloop/types";
 import { OrderItem } from "./entities/order-item.entity";
 import { Order } from "./entities/order.entity";
 
@@ -37,6 +38,11 @@ export class OrdersRepository {
   async updateStatus(id: string, status: Order["status"], runner?: QueryRunner): Promise<void> {
     const writer = runner ? runner.manager.getRepository(Order) : this.orders;
     await writer.update({ id }, { status });
+  }
+
+  async markCompleted(id: string, commissionAmount: string, runner?: QueryRunner): Promise<void> {
+    const writer = runner ? runner.manager.getRepository(Order) : this.orders;
+    await writer.update({ id }, { status: OrderStatus.COMPLETED, commissionAmount });
   }
 
   listByBuyer(buyerId: string, limit = 50): Promise<Order[]> {

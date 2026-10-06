@@ -48,12 +48,12 @@ export class WalletRepository {
     amount: string,
     runner: QueryRunner,
   ): Promise<void> {
-    const rows = await runner.query(
+    const [records, affected] = (await runner.query(
       `UPDATE "wallets" SET "balance" = "balance" - $1, "updated_at" = now()
        WHERE "id" = $2 AND "balance" >= $1 RETURNING "id"`,
       [amount, walletId],
-    );
-    if (rows.length === 0) throw new InsufficientFundsException();
+    )) as [{ id: string }[], number];
+    if (affected === 0 || records.length === 0) throw new InsufficientFundsException();
   }
 
   async creditAtomic(
@@ -82,6 +82,11 @@ export class WalletRepository {
     reference: string,
     runner: QueryRunner,
   ): Promise<PendingFunding | null> {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reference)
+    ) {
+      return null;
+    }
     const rows = await runner.query(
       `SELECT "id", "amount", "to_wallet_id" FROM "transactions"
        WHERE "reference_id" = $1 AND "status" = 'PENDING' FOR UPDATE`,

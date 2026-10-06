@@ -23,7 +23,7 @@ function setup() {
 describe("WalletRepository", () => {
   it("debits with a conditional atomic update", async () => {
     const { repository } = setup();
-    const queryRunner = runner(async () => [{ id: "w1" }]);
+    const queryRunner = runner(async () => [[{ id: "w1" }], 1]);
 
     await repository.debitAtomic("w1", "80.00", queryRunner);
 
@@ -36,7 +36,7 @@ describe("WalletRepository", () => {
 
   it("throws insufficient funds when the conditional update matches nothing", async () => {
     const { repository } = setup();
-    const queryRunner = runner(async () => []);
+    const queryRunner = runner(async () => [[], 0]);
 
     await expect(repository.debitAtomic("w1", "80.00", queryRunner)).rejects.toBeInstanceOf(
       InsufficientFundsException,

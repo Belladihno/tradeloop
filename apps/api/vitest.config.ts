@@ -18,7 +18,7 @@ export default defineConfig({
     include: ["src/**/*.spec.ts"],
     env: {
       DATABASE_URL: "postgresql://postgres:password@localhost:5432/tradeloop",
-      REDIS_URL: "redis://localhost:6379",
+      REDIS_URL: "redis://localhost:16379",
       JWT_SECRET: "test-secret-minimum-32-characters-long",
     },
   },

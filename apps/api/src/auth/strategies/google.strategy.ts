@@ -13,9 +13,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
     private readonly users: UsersService,
   ) {
     super({
-      clientID: config.get("GOOGLE_CLIENT_ID", { infer: true }),
-      clientSecret: config.get("GOOGLE_CLIENT_SECRET", { infer: true }),
-      callbackURL: config.get("GOOGLE_CALLBACK_URL", { infer: true }),
+      clientID: config.get("GOOGLE_CLIENT_ID", { infer: true }) || "unconfigured",
+      clientSecret: config.get("GOOGLE_CLIENT_SECRET", { infer: true }) || "unconfigured",
+      callbackURL:
+        config.get("GOOGLE_CALLBACK_URL", { infer: true }) || "http://localhost/unconfigured",
       scope: ["email", "profile"],
     });
   }

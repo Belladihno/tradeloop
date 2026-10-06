@@ -4,9 +4,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { OrderStatus, UserRole } from "@tradeloop/types";
 import { CartRepository } from "../cart/cart.repository";
+import { EscrowService } from "../escrow/escrow.service";
 import { IdempotencyService } from "../idempotency/idempotency.service";
 import { DiscountRejectedException } from "../common/exceptions/discount-rejected.exception";
 import { InvalidStateTransitionException } from "../common/exceptions/invalid-state-transition.exception";
@@ -91,6 +93,8 @@ function setup() {
     recordRedemption: vi.fn(),
   };
   const idempotency = { findResponse: vi.fn(), saveResponse: vi.fn() };
+  const escrow = { holdFunds: vi.fn(), refundFunds: vi.fn(), releaseFunds: vi.fn() };
+  const emitter = { emit: vi.fn() };
   const queryRunner = runner();
   const dataSource = { createQueryRunner: vi.fn(() => queryRunner) };
   const state: { current?: OrderStatus } = {};  const service = new OrdersService(
@@ -102,9 +106,11 @@ function setup() {
     sellers as unknown as SellerProfilesService,
     discounts as unknown as DiscountService,
     idempotency as unknown as IdempotencyService,
+    escrow as unknown as EscrowService,
+    emitter as unknown as EventEmitter2,
     dataSource as unknown as DataSource,
   );
-  return { service, orders, carts, products, wallets, walletService, sellers, discounts, idempotency, state };
+  return { service, orders, carts, products, wallets, walletService, sellers, discounts, idempotency, escrow, emitter, state };
 }
 
 const ADDRESS = { line1: "1 Adeola St", city: "Lagos", country: "NG" };
@@ -138,10 +144,13 @@ describe("OrdersService", () => {
     expect(first?.totalAmount).toBe("5000.00");
     expect(first?.items[0]).toMatchObject({ unitPrice: "2500.00", productName: "Ankara" });
     expect(ctx.products.decrementStock).toHaveBeenCalledTimes(2);
-    expect(ctx.wallets.debitAtomic).toHaveBeenCalledWith(
-      "buyer-wallet",
-      "5000.00",
-      expect.anything(),
+    expect(ctx.escrow.holdFunds).toHaveBeenCalledTimes(2);
+    expect(ctx.escrow.holdFunds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buyerWalletId: "buyer-wallet",
+        escrowWalletId: "escrow-wallet",
+        amount: "5000.00",
+      }),
     );
     expect(ctx.sellers.assertSellerActive).toHaveBeenCalledWith("seller-1");
     expect(ctx.sellers.assertSellerActive).toHaveBeenCalledWith("seller-2");
@@ -202,6 +211,7 @@ describe("OrdersService", () => {
     expect(ctx.state.current).toBe(OrderStatus.SHIPPED);
     await ctx.service.confirmDelivery("buyer-1", "o-1");
     expect(ctx.state.current).toBe(OrderStatus.DELIVERED);
+    expect(ctx.emitter.emit).toHaveBeenCalledWith("order.delivered", { orderId: "o-1" });
   });
 
   it("rejects out-of-order transitions and wrong parties", async () => {
@@ -239,10 +249,13 @@ describe("OrdersService", () => {
       OrderStatus.CANCELLED,
       expect.anything(),
     );
-    expect(ctx.wallets.creditAtomic).toHaveBeenCalledWith(
-      "buyer-wallet",
-      "5000.00",
-      expect.anything(),
+    expect(ctx.escrow.refundFunds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        escrowWalletId: "escrow-wallet",
+        buyerWalletId: "buyer-wallet",
+        amount: "5000.00",
+        orderId: "o-1",
+      }),
     );
     expect(ctx.products.restoreStock).toHaveBeenCalledWith("p-1", 2, expect.anything());
   });
@@ -307,10 +320,12 @@ describe("OrdersService", () => {
     expect(result.orders[0].totalAmount).toBe("4500.00");
     expect(result.orders[0].discountedAmount).toBe("500.00");
     expect(result.orders[0].discountId).toBe("discount-1");
-    expect(ctx.wallets.debitAtomic).toHaveBeenCalledWith(
-      "buyer-wallet",
-      "4500.00",
-      expect.anything(),
+    expect(ctx.escrow.holdFunds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buyerWalletId: "buyer-wallet",
+        escrowWalletId: "escrow-wallet",
+        amount: "4500.00",
+      }),
     );
     expect(ctx.discounts.claimUsage).toHaveBeenCalledWith("discount-1", expect.anything());
     expect(ctx.discounts.recordRedemption).toHaveBeenCalledWith(
