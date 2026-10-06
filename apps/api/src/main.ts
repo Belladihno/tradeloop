@@ -9,16 +9,16 @@ import {
 import helmet from "@fastify/helmet";
 import { ZodValidationPipe } from "nestjs-zod";
 import { AppModule } from "./app.module";
-import { registerRawBodyParser } from "./common/http/raw-body";
 import { registerRequestIdHook } from "./common/middleware/request-id.middleware";
 import { SanitizePipe } from "./common/pipes/sanitize.pipe";
 import type { Env } from "./config/env.validation";
+import { registerBullBoard } from "./queues/bull-board";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ logger: true }),
-    { bufferLogs: false },
+    { bufferLogs: false, rawBody: true },
   );
 
   const config = app.get(ConfigService<Env, true>);
@@ -27,11 +27,14 @@ async function bootstrap(): Promise<void> {
   const adminUrl = config.get("ADMIN_URL", { infer: true });
 
   await app.register(helmet);
-  registerRawBodyParser(app.getHttpAdapter().getInstance());
   registerRequestIdHook(app.getHttpAdapter().getInstance());
   app.enableCors({ origin: [webUrl, adminUrl], credentials: true });
   app.setGlobalPrefix("api/v1");
   app.useGlobalPipes(new ZodValidationPipe(), new SanitizePipe());
+
+  if (config.get("SWAGGER_ENABLED", { infer: true })) {
+    await registerBullBoard(app);
+  }
 
   await app.listen(port, "0.0.0.0");
   Logger.log(`API listening on port ${port}`, "Bootstrap");

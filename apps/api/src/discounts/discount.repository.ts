@@ -67,14 +67,14 @@ export class DiscountRepository {
   }
 
   async claimUsage(id: string, runner: QueryRunner): Promise<boolean> {
-    const rows = await runner.query(
+    const [records, affected] = (await runner.query(
       `UPDATE "discounts" SET "usage_count" = "usage_count" + 1, "updated_at" = now()
        WHERE "id" = $1 AND "is_active" = true AND "deleted_at" IS NULL
          AND ("max_usage_count" IS NULL OR "usage_count" < "max_usage_count")
        RETURNING "id"`,
       [id],
-    );
-    return rows.length > 0;
+    )) as [{ id: string }[], number];
+    return affected > 0 && records.length > 0;
   }
 
   recordRedemption(data: RecordRedemptionData, runner: QueryRunner): Promise<DiscountRedemption> {

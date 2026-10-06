@@ -66,12 +66,12 @@ export class ProductsRepository {
     quantity: number,
     runner: QueryRunner,
   ): Promise<void> {
-    const rows = await runner.query(
+    const [records, affected] = (await runner.query(
       `UPDATE "products" SET "stock" = "stock" - $1, "updated_at" = now()
        WHERE "id" = $2 AND "stock" >= $1 AND "deleted_at" IS NULL RETURNING "id"`,
       [quantity, productId],
-    );
-    if (rows.length === 0) throw new InsufficientStockException();
+    )) as [{ id: string }[], number];
+    if (affected === 0 || records.length === 0) throw new InsufficientStockException();
   }
 
   async restoreStock(

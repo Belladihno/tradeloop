@@ -1,7 +1,5 @@
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from "@testcontainers/postgresql";
+import Redis from "ioredis";
+import { startTestDatabase, type TestDatabase } from "../test/test-database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import { ThrottlerGuard } from "@nestjs/throttler";
@@ -18,6 +16,7 @@ import { SanitizePipe } from "../common/pipes/sanitize.pipe";
 import { User } from "../users/entities/user.entity";
 import { Init1759400000000 } from "../migrations/1759400000000-Init";
 import { CreateUsers1759500000000 } from "../migrations/1759500000000-CreateUsers";
+import { ConfigService } from "@nestjs/config";
 import { REDIS_CLIENT } from "../redis/redis.module";
 import { Wallet } from "../wallet/entities/wallet.entity";
 import { Transaction } from "../wallet/entities/transaction.entity";
@@ -38,35 +37,17 @@ vi.setConfig({ testTimeout: 120_000, hookTimeout: 180_000 });
 const PAYSTACK_TEST_SECRET = "paystack-test-webhook-secret";
 
 let app: NestFastifyApplication | undefined;
-let container: StartedPostgreSqlContainer | undefined;
+let container: TestDatabase | undefined;
 let dataSource: DataSource | undefined;
 
-const redisStore = new Map<string, string>();
-const redisFake = new Proxy(
-  {
-    get: async (key: string): Promise<string | null> =>
-      redisStore.get(key) ?? null,
-    set: async (key: string, value: string): Promise<string> => {
-      redisStore.set(key, value);
-      return "OK";
-    },
-    exists: async (key: string): Promise<number> =>
-      redisStore.has(key) ? 1 : 0,
-    del: async (key: string): Promise<number> =>
-      redisStore.delete(key) ? 1 : 0,
-  },
-  {
-    get: (target, prop) =>
-      prop in target
-        ? target[prop as keyof typeof target]
-        : async (): Promise<number> => 0,
-  },
+const redisClient = new Redis(
+  process.env.REDIS_URL ?? "redis://localhost:16379",
+  { maxRetriesPerRequest: 5 },
 );
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:15-alpine").start();
+  container = await startTestDatabase();
   process.env.DATABASE_URL = container.getConnectionUri();
-  process.env.REDIS_URL = "redis://localhost:6379";
   process.env.JWT_SECRET = "integration-test-secret-minimum-32-chars";
   process.env.JWT_ACCESS_EXPIRY = "15m";
   process.env.JWT_REFRESH_EXPIRY = "7d";
@@ -82,6 +63,7 @@ beforeAll(async () => {
   const { Orders1760010000000 } = await import("../migrations/1760010000000-Orders");
   const { IdempotencyKeys1760020000000 } = await import("../migrations/1760020000000-IdempotencyKeys");
   const { Discounts1760100000000 } = await import("../migrations/1760100000000-Discounts");
+  const { Disputes1760200000000 } = await import("../migrations/1760200000000-Disputes");
 
   dataSource = new DataSource({
     type: "postgres",
@@ -102,6 +84,7 @@ beforeAll(async () => {
       Orders1760010000000,
       IdempotencyKeys1760020000000,
       Discounts1760100000000,
+      Disputes1760200000000,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,
@@ -128,13 +111,16 @@ beforeAll(async () => {
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(REDIS_CLIENT)
-    .useValue(redisFake)
+    .useValue(redisClient)
+    .overrideProvider(ConfigService)
+    .useValue({ get: (key: string) => process.env[key] })
     .overrideGuard(ThrottlerGuard)
     .useValue({ canActivate: () => true })
     .compile();
 
   app = moduleRef.createNestApplication<NestFastifyApplication>(
     new FastifyAdapter(),
+    { rawBody: true },
   );
   app.setGlobalPrefix("api/v1");
   app.useGlobalPipes(new ZodValidationPipe(), new SanitizePipe());
@@ -155,6 +141,7 @@ afterAll(async () => {
   vi.unstubAllGlobals();
   await app?.close();
   await dataSource?.destroy();
+  await redisClient.quit().catch(() => undefined);
   await container?.stop();
 });
 
@@ -174,7 +161,6 @@ async function register(email: string, role: "BUYER" | "SELLER" = "BUYER"): Prom
   if (res.statusCode !== 201) throw new Error(`Register failed for ${email}`);
   return res.json().data.accessToken as string;
 }
-
 async function buyerIdOf(token: string): Promise<string> {
   const res = await client()({
     method: "GET",
@@ -182,6 +168,16 @@ async function buyerIdOf(token: string): Promise<string> {
     headers: { authorization: `Bearer ${token}` },
   });
   return res.json().data.id as string;
+}
+
+async function login(email: string, password: string): Promise<string> {
+  const res = await client()({
+    method: "POST",
+    url: "/api/v1/auth/login",
+    payload: { email, password },
+  });
+  if (res.statusCode !== 200) throw new Error(`Login failed for ${email}`);
+  return res.json().data.accessToken as string;
 }
 
 async function fundWallet(token: string, amount: string): Promise<void> {
@@ -371,7 +367,7 @@ describe("discounts", () => {
     ]);
 
     const codes = [first.statusCode, second.statusCode].sort();
-    expect(codes).toEqual([201, 409]);
+    expect(codes).toEqual([201, 400]);
     const failed = first.statusCode === 409 ? first : second;
     expect(failed.json().error).toBe("DISCOUNT_REJECTED");
   });

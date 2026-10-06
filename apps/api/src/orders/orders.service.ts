@@ -5,9 +5,9 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   OrderStatus,
-  TransactionType,
   UserRole,
   WalletType,
   type OrderWithItems,
@@ -18,7 +18,9 @@ import { InvalidStateTransitionException } from "../common/exceptions/invalid-st
 import { fromMinorUnits, toMinorUnits } from "../common/utils/money";
 import { CartRepository } from "../cart/cart.repository";
 import { DiscountService } from "../discounts/discount.service";
+import { EscrowService } from "../escrow/escrow.service";
 import { IdempotencyService } from "../idempotency/idempotency.service";
+import { ORDER_DELIVERED_EVENT } from "./events";
 import { ProductsRepository } from "../products/products.repository";
 import type { Product } from "../products/entities/product.entity";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
@@ -54,6 +56,8 @@ export class OrdersService {
     private readonly sellers: SellerProfilesService,
     private readonly discounts: DiscountService,
     private readonly idempotency: IdempotencyService,
+    private readonly escrow: EscrowService,
+    private readonly emitter: EventEmitter2,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -164,6 +168,7 @@ export class OrdersService {
       throw new InvalidStateTransitionException(order.status, OrderStatus.DELIVERED);
     }
     await this.orders.updateStatus(orderId, OrderStatus.DELIVERED);
+    this.emitter.emit(ORDER_DELIVERED_EVENT, { orderId });
     return this.getForUser(buyerId, UserRole.BUYER, orderId);
   }
 
@@ -183,19 +188,13 @@ export class OrdersService {
       const items = await this.orders.findItemsByOrder(orderId);
       const escrow = await this.escrowWallet();
       const buyerWallet = await this.walletService.ensureBuyerWallet(buyerId);
-      await this.wallets.debitAtomic(escrow.id, order.totalAmount, runner);
-      await this.wallets.creditAtomic(buyerWallet.id, order.totalAmount, runner);
-      await this.wallets.recordTransaction(
-        {
-          fromWalletId: escrow.id,
-          toWalletId: buyerWallet.id,
-          amount: order.totalAmount,
-          type: TransactionType.REFUND,
-          referenceId: orderId,
-          referenceType: "Order",
-        },
+      await this.escrow.refundFunds({
+        escrowWalletId: escrow.id,
+        buyerWalletId: buyerWallet.id,
+        amount: order.totalAmount,
+        orderId,
         runner,
-      );
+      });
       for (const item of items) {
         await this.products.restoreStock(item.productId, item.quantity, runner);
       }
@@ -289,19 +288,13 @@ export class OrdersService {
           })),
           runner,
         );
-        await this.wallets.debitAtomic(buyerWallet.id, total, runner);
-        await this.wallets.creditAtomic(escrow.id, total, runner);
-        await this.wallets.recordTransaction(
-          {
-            fromWalletId: buyerWallet.id,
-            toWalletId: escrow.id,
-            amount: total,
-            type: TransactionType.ESCROW_HOLD,
-            referenceId: order.id,
-            referenceType: "Order",
-          },
+        await this.escrow.holdFunds({
+          buyerWalletId: buyerWallet.id,
+          escrowWalletId: escrow.id,
+          amount: total,
+          orderId: order.id,
           runner,
-        );
+        });
         if (evaluation && discounted) {
           await this.discounts.claimUsage(evaluation.discount.id, runner);
           await this.discounts.recordRedemption(

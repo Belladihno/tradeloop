@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from "@nestjs/typeorm";
+import { join } from "path";
 import { DataSource, DataSourceOptions } from "typeorm";
 import { SnakeNamingStrategy } from "../common/database/snake-naming.strategy";
 import type { Env } from "./env.validation";
@@ -26,8 +27,6 @@ export function baseDataSourceOptions(databaseUrl: string): DataSourceOptions {
     // Never true — schema changes go through versioned migrations only.
     synchronize: false,
     namingStrategy: new SnakeNamingStrategy(),
-    entities: [`${__dirname}/../**/*.entity.{js,ts}`],
-    migrations: [`${__dirname}/../migrations/*.{js,ts}`],
   };
 }
 
@@ -35,9 +34,10 @@ export function buildDataSource(): DataSource {
   const databaseUrl =
     process.env.DATABASE_URL ??
     "postgresql://postgres:password@localhost:5432/tradeloop";
+  const extension = __filename.endsWith(".js") ? "js" : "ts";
   return new DataSource({
     ...baseDataSourceOptions(databaseUrl),
-    entities: ["src/**/*.entity.ts"],
-    migrations: ["src/migrations/*.ts"],
+    entities: [join(__dirname, "..", "**", `*.entity.${extension}`)],
+    migrations: [join(__dirname, "..", "migrations", `*.${extension}`)],
   });
 }
