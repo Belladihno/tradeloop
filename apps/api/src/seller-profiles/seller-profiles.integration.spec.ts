@@ -58,6 +58,10 @@ beforeAll(async () => {
   const { IdempotencyKeys1760020000000 } = await import("../migrations/1760020000000-IdempotencyKeys");
   const { Discounts1760100000000 } = await import("../migrations/1760100000000-Discounts");
   const { Disputes1760200000000 } = await import("../migrations/1760200000000-Disputes");
+  const { Payouts1760300000000 } = await import("../migrations/1760300000000-Payouts");
+  const { Notifications1760400000000 } = await import("../migrations/1760400000000-Notifications");
+  const { Shipments1760500000000 } = await import("../migrations/1760500000000-Shipments");
+  const { SellerWebhooks1760600000000 } = await import("../migrations/1760600000000-SellerWebhooks");
 
   dataSource = new DataSource({
     type: "postgres",
@@ -76,6 +80,10 @@ beforeAll(async () => {
       IdempotencyKeys1760020000000,
       Discounts1760100000000,
       Disputes1760200000000,
+      Payouts1760300000000,
+      Notifications1760400000000,
+      Shipments1760500000000,
+      SellerWebhooks1760600000000,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,
@@ -269,5 +277,37 @@ describe("seller lifecycle", () => {
       headers: { authorization: `Bearer ${token}` },
     });
     expect(rereviewed.json().data.rejectionReason).toBeNull();
+  });
+
+  it("stores webhook configuration encrypted at onboarding", async () => {
+    const third = await client()({
+      method: "POST",
+      url: "/api/v1/auth/register",
+      payload: { email: "third@tradeloop.test", password: "password123", role: "BUYER" },
+    });
+    const thirdToken = third.json().data.accessToken as string;
+    const onboarded = await client()({
+      method: "POST",
+      url: "/api/v1/seller/onboard",
+      headers: { authorization: `Bearer ${thirdToken}` },
+      payload: {
+        storeName: "Third Store",
+        bankAccountNumber: "1122334455",
+        bankCode: "058",
+        webhookUrl: "https://seller.test/hooks",
+        webhookSecret: "supersecretvalue123",
+      },
+    });
+    expect(onboarded.statusCode).toBe(201);
+    expect(onboarded.json().data.webhookUrl).toBe("https://seller.test/hooks");
+    expect(onboarded.json().data.webhookSecret).toBeUndefined();
+
+    if (!dataSource) throw new Error("DataSource not initialized");
+    const stored = await dataSource
+      .getRepository(SellerProfile)
+      .findOneOrFail({ where: { id: onboarded.json().data.id as string } });
+    expect(stored.webhookUrl).toBe("https://seller.test/hooks");
+    expect(stored.webhookSecret).not.toBe("supersecretvalue123");
+    expect(stored.webhookSecret).toContain(":");
   });
 });

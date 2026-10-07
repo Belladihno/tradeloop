@@ -47,6 +47,8 @@ export class SellerProfilesService {
       storeName: input.storeName,
       bankAccountNumber: this.crypto.encrypt(input.bankAccountNumber),
       bankCode: input.bankCode,
+      webhookUrl: input.webhookUrl ?? null,
+      webhookSecret: input.webhookSecret ? this.crypto.encrypt(input.webhookSecret) : null,
       commissionRate: this.config.get("PLATFORM_COMMISSION_RATE", { infer: true }),
       status: SellerStatus.PENDING_VERIFICATION,
     });
