@@ -33,6 +33,7 @@ function setup() {
     findPendingFunding: vi.fn(),
     markTransactionCompleted: vi.fn(),
     creditAtomic: vi.fn(),
+    findWalletById: vi.fn(async () => ({ id: "w-1", userId: "u-1" })),
   };
   const payments = { initializeTransaction: vi.fn() };
   const config = { get: () => "http://localhost:3001" };
@@ -42,6 +43,11 @@ function setup() {
     wallets as unknown as WalletRepository,
     payments as unknown as PaymentService,
     config as unknown as ConfigService,
+    {
+      checkAmountAnomaly: vi.fn(async () => ({ suspicious: false })),
+      checkNewAccount: vi.fn(async () => ({ suspicious: false })),
+    } as never,
+    { findById: vi.fn() } as never,
     dataSource as unknown as DataSource,
   );
   return { service, wallets, payments, queryRunner };

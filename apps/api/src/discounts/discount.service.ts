@@ -16,6 +16,7 @@ import { toMinorUnits } from "../common/utils/money";
 import { ProductsRepository } from "../products/products.repository";
 import type { Discount } from "./entities/discount.entity";
 import { DiscountRepository, type RecordRedemptionData } from "./discount.repository";
+import { FraudService } from "../fraud/fraud.service";
 
 export interface PricedLine {
   productId: string;
@@ -34,6 +35,7 @@ export class DiscountService {
   constructor(
     private readonly discounts: DiscountRepository,
     private readonly products: ProductsRepository,
+    private readonly fraud: FraudService,
   ) {}
 
   async resolveForGroup(
@@ -53,11 +55,13 @@ export class DiscountService {
     }
   }
 
-  recordRedemption(
+  async recordRedemption(
     data: RecordRedemptionData,
     runner: QueryRunner,
   ): Promise<unknown> {
-    return this.discounts.recordRedemption(data, runner);
+    const saved = await this.discounts.recordRedemption(data, runner);
+    await this.fraud.screenDiscountRedemption(data.userId);
+    return saved;
   }
 
   async createDiscount(

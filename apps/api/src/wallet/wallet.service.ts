@@ -4,7 +4,10 @@ import { DataSource, type QueryRunner } from "typeorm";
 import { v7 as uuidv7 } from "uuid";
 import { TransactionStatus, TransactionType, WalletType } from "@tradeloop/types";
 import type { Env } from "../config/env.validation";
+import { toMinorUnits } from "../common/utils/money";
+import { FraudService } from "../fraud/fraud.service";
 import { PaymentService } from "../payments/payment.service";
+import { UsersService } from "../users/users.service";
 import type { Wallet } from "./entities/wallet.entity";
 import { WalletRepository } from "./wallet.repository";
 
@@ -14,6 +17,8 @@ export class WalletService {
     private readonly wallets: WalletRepository,
     private readonly payments: PaymentService,
     private readonly config: ConfigService<Env, true>,
+    private readonly fraud: FraudService,
+    private readonly users: UsersService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -99,6 +104,12 @@ export class WalletService {
       await this.wallets.creditAtomic(pending.toWalletId, amount, runner);
       await this.wallets.markTransactionCompleted(pending.id, runner);
       await runner.commitTransaction();
+      const funded = await this.wallets.findWalletById(pending.toWalletId);
+      const fundedUser = funded?.userId ? await this.users.findById(funded.userId) : null;
+      if (funded?.userId && fundedUser) {
+        await this.fraud.checkAmountAnomaly(funded.userId, toMinorUnits(amount));
+        await this.fraud.checkNewAccount(funded.userId, fundedUser.createdAt, toMinorUnits(amount));
+      }
       return "completed";
     } catch (error) {
       await runner.rollbackTransaction();

@@ -72,6 +72,7 @@ function setup() {
   const service = new DiscountService(
     discounts as unknown as DiscountRepository,
     products as unknown as ProductsRepository,
+    { screenDiscountRedemption: vi.fn(async () => ({ suspicious: false })) } as never,
   );
   return { service, discounts, products };
 }

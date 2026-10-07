@@ -1,12 +1,15 @@
 import {
   Body,
   Controller,
+  Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
+  Query,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "@tradeloop/types";
+import { UserRole, type FraudRuleName } from "@tradeloop/types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -17,6 +20,8 @@ import { DisputeService } from "../disputes/disputes.service";
 import { RejectPayoutDto } from "../payouts/dto/reject-payout.dto";
 import { PayoutsService } from "../payouts/payouts.service";
 import { WebhookDeliveryService } from "../webhooks/outbound/webhook-delivery.service";
+import { UpdateFraudRuleDto } from "../fraud/dto/update-fraud-rule.dto";
+import { FraudService } from "../fraud/fraud.service";
 import { UpdateCommissionDto } from "../seller-profiles/dto/update-commission.dto";
 import { RejectSellerDto } from "../seller-profiles/dto/reject-seller.dto";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
@@ -30,6 +35,7 @@ export class AdminController {
     private readonly disputes: DisputeService,
     private readonly payouts: PayoutsService,
     private readonly webhookDeliveries: WebhookDeliveryService,
+    private readonly fraud: FraudService,
   ) {}
 
   @Patch("sellers/:id/review")
@@ -81,5 +87,23 @@ export class AdminController {
   @Patch("webhook-deliveries/:id/retry")
   retryWebhookDelivery(@Param("id", ParseUUIDPipe) id: string) {
     return this.webhookDeliveries.retryDelivery(id);
+  }
+
+  @Get("fraud/events")
+  fraudEvents(@Query("limit") limit?: string) {
+    const take = Math.min(Math.max(Number(limit) || 100, 1), 500);
+    return this.fraud.listEvents(take);
+  }
+
+  @Get("fraud/rules")
+  fraudRules() {
+    return this.fraud.listRules();
+  }
+
+  @Patch("fraud/rules/:name")
+  async updateFraudRule(@Param("name") name: string, @Body() dto: UpdateFraudRuleDto) {
+    const updated = await this.fraud.updateRule(name as FraudRuleName, dto);
+    if (!updated) throw new NotFoundException("Fraud rule not found");
+    return updated;
   }
 }

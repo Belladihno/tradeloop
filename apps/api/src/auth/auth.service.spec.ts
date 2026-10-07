@@ -81,6 +81,7 @@ function setup() {
     wallets as unknown as WalletService,
     new JwtService({ secret: TEST_SECRET }),
     config as unknown as ConfigService,
+    { screenLogin: vi.fn(async () => ({ suspicious: false })) } as never,
     redis as unknown as Redis,
   );
   return {

@@ -15,6 +15,7 @@ import {
 } from "@tradeloop/types";
 import { InvalidStateTransitionException } from "../common/exceptions/invalid-state-transition.exception";
 import { EscrowService } from "../escrow/escrow.service";
+import { FraudService } from "../fraud/fraud.service";
 import { OrdersRepository } from "../orders/orders.repository";
 import { ProductsRepository } from "../products/products.repository";
 import { DISPUTE_EXPIRY_DELAY_MS } from "../queues/queues.module";
@@ -37,6 +38,7 @@ export class DisputeService {
     private readonly walletService: WalletService,
     private readonly escrow: EscrowService,
     private readonly settlement: SettlementService,
+    private readonly fraud: FraudService,
     private readonly dataSource: DataSource,
     @InjectQueue("disputes") private readonly expiryQueue: Queue,
   ) {}
@@ -76,6 +78,8 @@ export class DisputeService {
       dispute.expiryJobId = String(job.id ?? `${EXPIRY_JOB_PREFIX}${dispute.id}`);
       const saved = await this.disputes.save(dispute, runner);
       await runner.commitTransaction();
+      await this.fraud.recordDispute(buyerId);
+      await this.fraud.screenDisputeRate(buyerId);
       return saved;
     } catch (error) {
       await runner.rollbackTransaction();
