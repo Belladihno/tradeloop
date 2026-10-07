@@ -23,6 +23,7 @@ function setup(fraudSuspicious = false) {
     myProfile: vi.fn(async () => ({ bankCode: "058", bankAccountNumber: "enc:0123456789" })),
   };
   const crypto = { decrypt: vi.fn(() => "0123456789") };
+  const notifications = { notify: vi.fn(async () => []) };
   const fraudCheck = { screen: vi.fn(async () => ({ suspicious: fraudSuspicious })) };
   const queue = { add: vi.fn(async () => ({ id: "job-1" })) };
   const runner = {
@@ -39,6 +40,7 @@ function setup(fraudSuspicious = false) {
     walletService as unknown as WalletService,
     sellers as unknown as SellerProfilesService,
     crypto as unknown as EncryptionService,
+    notifications as never,
     dataSource as unknown as DataSource,
     fraudCheck,
     queue as never,

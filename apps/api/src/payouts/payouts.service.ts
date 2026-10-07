@@ -8,11 +8,12 @@ import {
 import { InjectQueue } from "@nestjs/bullmq";
 import type { Queue } from "bullmq";
 import { DataSource } from "typeorm";
-import { PayoutStatus } from "@tradeloop/types";
+import { PayoutStatus, NotificationChannel } from "@tradeloop/types";
 import { EncryptionService } from "../common/crypto/encryption.service";
 import { InsufficientFundsException } from "../common/exceptions/insufficient-funds.exception";
 import { InvalidStateTransitionException } from "../common/exceptions/invalid-state-transition.exception";
 import { fromMinorUnits, toMinorUnits } from "../common/utils/money";
+import { NotificationsService } from "../notifications/notifications.service";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
 import { WalletRepository } from "../wallet/wallet.repository";
 import { WalletService } from "../wallet/wallet.service";
@@ -30,6 +31,7 @@ export class PayoutsService {
     private readonly walletService: WalletService,
     private readonly sellers: SellerProfilesService,
     private readonly crypto: EncryptionService,
+    private readonly notifications: NotificationsService,
     private readonly dataSource: DataSource,
     @Inject(PAYOUT_FRAUD_CHECK) private readonly fraudCheck: PayoutFraudCheck,
     @InjectQueue("payouts") private readonly payoutsQueue: Queue,
@@ -70,7 +72,15 @@ export class PayoutsService {
       { jobId: `${PROCESS_JOB_PREFIX}${payout.id}` },
     );
     payout.jobId = String(job.id ?? `${PROCESS_JOB_PREFIX}${payout.id}`);
-    return this.payouts.save(payout);
+    const approved = await this.payouts.save(payout);
+    await this.notifications.notify({
+      userId: approved.sellerId,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+      subject: "Payout approved",
+      body: `Your payout of ${approved.amount} was approved and is being processed.`,
+      data: { payoutId: approved.id },
+    });
+    return approved;
   }
 
   async reject(payoutId: string, adminId: string, reason?: string): Promise<PayoutRequest> {
@@ -107,6 +117,13 @@ export class PayoutsService {
       payout.resolvedAt = new Date();
       await this.payouts.save(payout, runner);
       await runner.commitTransaction();
+      await this.notifications.notify({
+        userId: payout.sellerId,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+        subject: "Payout completed",
+        body: `Your payout of ${payout.amount} was sent to your bank account.`,
+        data: { payoutId: payout.id },
+      });
       return "completed";
     } catch (error) {
       await runner.rollbackTransaction();
