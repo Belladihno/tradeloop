@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
@@ -20,6 +21,7 @@ import { CartRepository } from "../cart/cart.repository";
 import { DiscountService } from "../discounts/discount.service";
 import { EscrowService } from "../escrow/escrow.service";
 import { IdempotencyService } from "../idempotency/idempotency.service";
+import { WebhookDeliveryService } from "../webhooks/outbound/webhook-delivery.service";
 import { ORDER_DELIVERED_EVENT } from "./events";
 import { ProductsRepository } from "../products/products.repository";
 import type { Product } from "../products/entities/product.entity";
@@ -47,6 +49,8 @@ const CANCELLABLE = [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.SHI
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly orders: OrdersRepository,
     private readonly carts: CartRepository,
@@ -58,8 +62,23 @@ export class OrdersService {
     private readonly idempotency: IdempotencyService,
     private readonly escrow: EscrowService,
     private readonly emitter: EventEmitter2,
+    private readonly webhooks: WebhookDeliveryService,
     private readonly dataSource: DataSource,
   ) {}
+
+  private async emitOrderEvent(
+    event: "order.created" | "order.paid" | "order.shipped" | "order.delivered",
+    order: { id: string; sellerId: string; totalAmount: string },
+  ): Promise<void> {
+    try {
+      await this.webhooks.dispatch(event, order.sellerId, {
+        orderId: order.id,
+        totalAmount: order.totalAmount,
+      });
+    } catch (error) {
+      this.logger.warn(`Outbound ${event} webhook failed for order ${order.id}: ${(error as Error).message}`);
+    }
+  }
 
   async create(
     buyerId: string,
@@ -156,6 +175,7 @@ export class OrdersService {
       throw new InvalidStateTransitionException(order.status, OrderStatus.SHIPPED);
     }
     await this.orders.updateStatus(orderId, OrderStatus.SHIPPED);
+    await this.emitOrderEvent("order.shipped", order);
     return this.getForUser(sellerId, UserRole.SELLER, orderId);
   }
 
@@ -169,6 +189,7 @@ export class OrdersService {
     }
     await this.orders.updateStatus(orderId, OrderStatus.DELIVERED);
     this.emitter.emit(ORDER_DELIVERED_EVENT, { orderId });
+    await this.emitOrderEvent("order.delivered", order);
     return this.getForUser(buyerId, UserRole.BUYER, orderId);
   }
 
@@ -320,6 +341,10 @@ export class OrdersService {
       throw error;
     } finally {
       await runner.release();
+    }
+    for (const order of created) {
+      await this.emitOrderEvent("order.created", order);
+      await this.emitOrderEvent("order.paid", order);
     }
     return { orders: created };
   }

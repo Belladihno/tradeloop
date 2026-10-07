@@ -95,6 +95,7 @@ function setup() {
   const idempotency = { findResponse: vi.fn(), saveResponse: vi.fn() };
   const escrow = { holdFunds: vi.fn(), refundFunds: vi.fn(), releaseFunds: vi.fn() };
   const emitter = { emit: vi.fn() };
+  const webhooks = { dispatch: vi.fn() };
   const queryRunner = runner();
   const dataSource = { createQueryRunner: vi.fn(() => queryRunner) };
   const state: { current?: OrderStatus } = {};  const service = new OrdersService(
@@ -108,9 +109,10 @@ function setup() {
     idempotency as unknown as IdempotencyService,
     escrow as unknown as EscrowService,
     emitter as unknown as EventEmitter2,
+    webhooks as never,
     dataSource as unknown as DataSource,
   );
-  return { service, orders, carts, products, wallets, walletService, sellers, discounts, idempotency, escrow, emitter, state };
+  return { service, orders, carts, products, wallets, walletService, sellers, discounts, idempotency, escrow, emitter, webhooks, state };
 }
 
 const ADDRESS = { line1: "1 Adeola St", city: "Lagos", country: "NG" };
