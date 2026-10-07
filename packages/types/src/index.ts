@@ -7,3 +7,4 @@ export * from "./discount.js";
 export * from "./dispute.js";
 export * from "./payout.js";
 export * from "./notification.js";
+export * from "./shipment.js";
