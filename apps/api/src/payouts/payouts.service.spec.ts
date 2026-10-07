@@ -24,6 +24,7 @@ function setup(fraudSuspicious = false) {
   };
   const crypto = { decrypt: vi.fn(() => "0123456789") };
   const notifications = { notify: vi.fn(async () => []) };
+  const webhooks = { dispatch: vi.fn(async () => null) };
   const fraudCheck = { screen: vi.fn(async () => ({ suspicious: fraudSuspicious })) };
   const queue = { add: vi.fn(async () => ({ id: "job-1" })) };
   const runner = {
@@ -41,6 +42,7 @@ function setup(fraudSuspicious = false) {
     sellers as unknown as SellerProfilesService,
     crypto as unknown as EncryptionService,
     notifications as never,
+    webhooks as never,
     dataSource as unknown as DataSource,
     fraudCheck,
     queue as never,

@@ -34,6 +34,7 @@ import { Discount } from "../discounts/entities/discount.entity";
 import { DiscountRedemption } from "../discounts/entities/discount-redemption.entity";
 import { Dispute } from "../disputes/entities/dispute.entity";
 import { PayoutRequest } from "./entities/payout-request.entity";
+import { WebhookDelivery } from "../webhooks/outbound/entities/webhook-delivery.entity";
 import { Notification } from "../notifications/entities/notification.entity";
 import { DisputesProcessor } from "../disputes/disputes.processor";
 import { SettlementsProcessor } from "../settlement/settlements.processor";
@@ -76,6 +77,9 @@ beforeAll(async () => {
   const { Disputes1760200000000 } = await import("../migrations/1760200000000-Disputes");
   const { Payouts1760300000000 } = await import("../migrations/1760300000000-Payouts");
   const { Notifications1760400000000 } = await import("../migrations/1760400000000-Notifications");
+  const { Shipments1760500000000 } = await import("../migrations/1760500000000-Shipments");
+  const { SellerWebhooks1760600000000 } = await import("../migrations/1760600000000-SellerWebhooks");
+  const { WebhookDeliveries1760600000001 } = await import("../migrations/1760600000001-WebhookDeliveries");
 
   dataSource = new DataSource({
     type: "postgres",
@@ -83,7 +87,7 @@ beforeAll(async () => {
     entities: [
       User, Wallet, Transaction, Category, Product, SellerProfile, BuyerProfile,
       Cart, CartItem, Order, OrderItem, IdempotencyKey, Discount, DiscountRedemption, Dispute,
-      PayoutRequest, Notification,
+      PayoutRequest, Notification, WebhookDelivery,
     ],
     migrations: [
       Init1759400000000,
@@ -100,6 +104,9 @@ beforeAll(async () => {
       Disputes1760200000000,
       Payouts1760300000000,
       Notifications1760400000000,
+      Shipments1760500000000,
+      SellerWebhooks1760600000000,
+      WebhookDeliveries1760600000001,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,
@@ -225,7 +232,13 @@ describe("payouts", () => {
       method: "POST",
       url: "/api/v1/seller/onboard",
       headers: { authorization: `Bearer ${sellerToken}` },
-      payload: { storeName: "Payout Store", bankAccountNumber: "0123456789", bankCode: "058" },
+      payload: {
+        storeName: "Payout Store",
+        bankAccountNumber: "0123456789",
+        bankCode: "058",
+        webhookUrl: "https://seller.test/hooks",
+        webhookSecret: "supersecretvalue123",
+      },
     });
     expect(onboarded.statusCode).toBe(201);
     const profileId = onboarded.json().data.id as string;
@@ -286,6 +299,11 @@ describe("payouts", () => {
     expect(await payouts.process(payoutId)).toBe("completed");
     expect(await payouts.process(payoutId)).toBe("duplicate");
     expect(await sellerBalance(sellerId)).toBe("47500.00");
+
+    if (!dataSource) throw new Error("DataSource not initialized");
+    const rows = await dataSource.getRepository(WebhookDelivery).find();
+    const events = rows.map((row) => row.eventType);
+    expect(events).toContain("payout.completed");
   });
 
   it("fails payouts when the balance is gone at processing time", async () => {

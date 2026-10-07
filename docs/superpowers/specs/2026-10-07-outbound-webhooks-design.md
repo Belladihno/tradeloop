@@ -63,5 +63,6 @@ seller's dead endpoint never blocks others (per-delivery jobs, concurrency
 - Consistent: fixed events everywhere, no subscription concepts leak in.
 - Scoped to one implementation plan: one module, one table, one endpoint
   trio (dispatch is internal), one admin endpoint.
-- `order.paid` means funding confirmed (webhook charge.success processed),
-  not order creation; stated here to remove ambiguity.
+- `order.paid` means funds captured into escrow at checkout (it fires alongside
+  `order.created` with the amount); wallet top-ups carry no order context and
+  emit nothing. Stated here to remove ambiguity.

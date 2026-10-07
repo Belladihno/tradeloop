@@ -14,6 +14,7 @@ import { InsufficientFundsException } from "../common/exceptions/insufficient-fu
 import { InvalidStateTransitionException } from "../common/exceptions/invalid-state-transition.exception";
 import { fromMinorUnits, toMinorUnits } from "../common/utils/money";
 import { NotificationsService } from "../notifications/notifications.service";
+import { WebhookDeliveryService } from "../webhooks/outbound/webhook-delivery.service";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
 import { WalletRepository } from "../wallet/wallet.repository";
 import { WalletService } from "../wallet/wallet.service";
@@ -32,6 +33,7 @@ export class PayoutsService {
     private readonly sellers: SellerProfilesService,
     private readonly crypto: EncryptionService,
     private readonly notifications: NotificationsService,
+    private readonly webhooks: WebhookDeliveryService,
     private readonly dataSource: DataSource,
     @Inject(PAYOUT_FRAUD_CHECK) private readonly fraudCheck: PayoutFraudCheck,
     @InjectQueue("payouts") private readonly payoutsQueue: Queue,
@@ -123,6 +125,10 @@ export class PayoutsService {
         subject: "Payout completed",
         body: `Your payout of ${payout.amount} was sent to your bank account.`,
         data: { payoutId: payout.id },
+      });
+      await this.webhooks.dispatch("payout.completed", payout.sellerId, {
+        payoutId: payout.id,
+        amount: payout.amount,
       });
       return "completed";
     } catch (error) {

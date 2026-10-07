@@ -62,6 +62,7 @@ beforeAll(async () => {
   const { Notifications1760400000000 } = await import("../migrations/1760400000000-Notifications");
   const { Shipments1760500000000 } = await import("../migrations/1760500000000-Shipments");
   const { SellerWebhooks1760600000000 } = await import("../migrations/1760600000000-SellerWebhooks");
+  const { WebhookDeliveries1760600000001 } = await import("../migrations/1760600000001-WebhookDeliveries");
 
   dataSource = new DataSource({
     type: "postgres",
@@ -84,6 +85,7 @@ beforeAll(async () => {
       Notifications1760400000000,
       Shipments1760500000000,
       SellerWebhooks1760600000000,
+      WebhookDeliveries1760600000001,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,
