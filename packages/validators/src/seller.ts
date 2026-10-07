@@ -6,6 +6,8 @@ export const onboardSellerSchema = z.object({
     .string()
     .regex(/^\d{10}$/, "Enter a valid 10-digit account number"),
   bankCode: z.string().regex(/^\d{3,6}$/, "Enter a valid bank code"),
+  webhookUrl: z.string().trim().url("Enter a valid webhook URL").max(500).optional(),
+  webhookSecret: z.string().trim().min(16).max(200).optional(),
 });
 
 export type OnboardSellerInput = z.infer<typeof onboardSellerSchema>;

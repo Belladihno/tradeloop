@@ -6,6 +6,7 @@ import { EscrowModule } from "../escrow/escrow.module";
 import { IdempotencyModule } from "../idempotency/idempotency.module";
 import { ProductsModule } from "../products/products.module";
 import { SellerProfilesModule } from "../seller-profiles/seller-profiles.module";
+import { OutboundWebhooksModule } from "../webhooks/outbound/outbound-webhooks.module";
 import { WalletModule } from "../wallet/wallet.module";
 import { OrderItem } from "./entities/order-item.entity";
 import { Order } from "./entities/order.entity";
@@ -23,6 +24,7 @@ import { OrdersService } from "./orders.service";
     DiscountsModule,
     EscrowModule,
     IdempotencyModule,
+    OutboundWebhooksModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService, OrdersRepository],

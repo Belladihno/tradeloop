@@ -43,6 +43,11 @@ beforeAll(async () => {
   const { IdempotencyKeys1760020000000 } = await import("../migrations/1760020000000-IdempotencyKeys");
   const { Discounts1760100000000 } = await import("../migrations/1760100000000-Discounts");
   const { Disputes1760200000000 } = await import("../migrations/1760200000000-Disputes");
+  const { Payouts1760300000000 } = await import("../migrations/1760300000000-Payouts");
+  const { Notifications1760400000000 } = await import("../migrations/1760400000000-Notifications");
+  const { Shipments1760500000000 } = await import("../migrations/1760500000000-Shipments");
+  const { SellerWebhooks1760600000000 } = await import("../migrations/1760600000000-SellerWebhooks");
+  const { WebhookDeliveries1760600000001 } = await import("../migrations/1760600000001-WebhookDeliveries");
 
   const dataSource = new DataSource({
     type: "postgres",
@@ -61,6 +66,11 @@ beforeAll(async () => {
       IdempotencyKeys1760020000000,
       Discounts1760100000000,
       Disputes1760200000000,
+      Payouts1760300000000,
+      Notifications1760400000000,
+      Shipments1760500000000,
+      SellerWebhooks1760600000000,
+      WebhookDeliveries1760600000001,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,

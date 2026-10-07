@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import { startTestDatabase, type TestDatabase } from "../test/test-database";
-import type { NestFastifyApplication } from "@nestjs/platform-fastify";
+import { WebhookDelivery } from "../webhooks/outbound/entities/webhook-delivery.entity";import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { Test } from "@nestjs/testing";
@@ -63,13 +63,18 @@ beforeAll(async () => {
   const { IdempotencyKeys1760020000000 } = await import("../migrations/1760020000000-IdempotencyKeys");
   const { Discounts1760100000000 } = await import("../migrations/1760100000000-Discounts");
   const { Disputes1760200000000 } = await import("../migrations/1760200000000-Disputes");
+  const { Payouts1760300000000 } = await import("../migrations/1760300000000-Payouts");
+  const { Notifications1760400000000 } = await import("../migrations/1760400000000-Notifications");
+  const { Shipments1760500000000 } = await import("../migrations/1760500000000-Shipments");
+  const { SellerWebhooks1760600000000 } = await import("../migrations/1760600000000-SellerWebhooks");
+  const { WebhookDeliveries1760600000001 } = await import("../migrations/1760600000001-WebhookDeliveries");
 
   dataSource = new DataSource({
     type: "postgres",
     url: container.getConnectionUri(),
     entities: [
       User, Wallet, Transaction, Category, Product, SellerProfile, BuyerProfile,
-      Cart, CartItem, Order, OrderItem, IdempotencyKey,
+      Cart, CartItem, Order, OrderItem, IdempotencyKey, WebhookDelivery,
     ],
     migrations: [
       Init1759400000000,
@@ -84,6 +89,11 @@ beforeAll(async () => {
       IdempotencyKeys1760020000000,
       Discounts1760100000000,
       Disputes1760200000000,
+      Payouts1760300000000,
+      Notifications1760400000000,
+      Shipments1760500000000,
+      SellerWebhooks1760600000000,
+      WebhookDeliveries1760600000001,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,
@@ -174,7 +184,13 @@ async function onboardSeller(
     method: "POST",
     url: "/api/v1/seller/onboard",
     headers: { authorization: `Bearer ${token}` },
-    payload: { storeName, bankAccountNumber: "0123456789", bankCode: "058" },
+    payload: {
+      storeName,
+      bankAccountNumber: "0123456789",
+      bankCode: "058",
+      webhookUrl: "https://seller.test/hooks",
+      webhookSecret: "supersecretvalue123",
+    },
   });
   if (onboarded.statusCode !== 201) throw new Error(`Onboard failed for ${email}`);
   const profileId = onboarded.json().data.id as string;
@@ -435,5 +451,15 @@ describe("orders", () => {
       .json()
       .data.items.find((item: { id: string }) => item.id === productOne) as { stock: number };
     expect(restored.stock).toBe(8);
+  });
+
+  it("emits outbound webhook deliveries for the order lifecycle", async () => {
+    if (!dataSource) throw new Error("DataSource not initialized");
+    const rows = await dataSource.getRepository(WebhookDelivery).find();
+    const events = rows
+      .filter((row) => (row.payload as Record<string, unknown>).orderId === firstOrderId)
+      .map((row) => row.eventType)
+      .sort();
+    expect(events).toEqual(["order.created", "order.delivered", "order.paid", "order.shipped"]);
   });
 });

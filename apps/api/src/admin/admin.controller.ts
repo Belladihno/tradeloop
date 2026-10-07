@@ -16,6 +16,7 @@ import { ResolveDisputeDto } from "../disputes/dto/resolve-dispute.dto";
 import { DisputeService } from "../disputes/disputes.service";
 import { RejectPayoutDto } from "../payouts/dto/reject-payout.dto";
 import { PayoutsService } from "../payouts/payouts.service";
+import { WebhookDeliveryService } from "../webhooks/outbound/webhook-delivery.service";
 import { UpdateCommissionDto } from "../seller-profiles/dto/update-commission.dto";
 import { RejectSellerDto } from "../seller-profiles/dto/reject-seller.dto";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
@@ -28,6 +29,7 @@ export class AdminController {
     private readonly sellers: SellerProfilesService,
     private readonly disputes: DisputeService,
     private readonly payouts: PayoutsService,
+    private readonly webhookDeliveries: WebhookDeliveryService,
   ) {}
 
   @Patch("sellers/:id/review")
@@ -74,5 +76,10 @@ export class AdminController {
     @Body() dto: RejectPayoutDto,
   ) {
     return this.payouts.reject(id, admin.id, dto.reason);
+  }
+
+  @Patch("webhook-deliveries/:id/retry")
+  retryWebhookDelivery(@Param("id", ParseUUIDPipe) id: string) {
+    return this.webhookDeliveries.retryDelivery(id);
   }
 }

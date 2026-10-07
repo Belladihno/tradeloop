@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { OutboundWebhooksModule } from "../webhooks/outbound/outbound-webhooks.module";
 import { QueuesModule } from "../queues/queues.module";
 import { SellerProfilesModule } from "../seller-profiles/seller-profiles.module";
 import { WalletModule } from "../wallet/wallet.module";
@@ -17,6 +18,7 @@ import { PayoutsService } from "./payouts.service";
     WalletModule,
     SellerProfilesModule,
     NotificationsModule,
+    OutboundWebhooksModule,
     QueuesModule,
   ],
   controllers: [PayoutsController],

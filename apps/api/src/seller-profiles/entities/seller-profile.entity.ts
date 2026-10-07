@@ -18,6 +18,13 @@ export class SellerProfile extends BaseEntity {
   @Column({ type: "varchar", length: 6, nullable: true })
   bankCode!: string | null;
 
+  @Column({ type: "varchar", length: 500, nullable: true })
+  webhookUrl!: string | null;
+
+  @Exclude()
+  @Column({ type: "varchar", length: 500, nullable: true })
+  webhookSecret!: string | null;
+
   @Column({ type: "numeric", precision: 5, scale: 4, default: "0.1000" })
   commissionRate!: string;
 
