@@ -29,6 +29,7 @@ import { IdempotencyModule } from "./idempotency/idempotency.module";
 import { OrdersModule } from "./orders/orders.module";
 import { LogisticsModule } from "./logistics/logistics.module";
 import { FraudModule } from "./fraud/fraud.module";
+import { AuditModule } from "./audit/audit.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { PayoutsModule } from "./payouts/payouts.module";
 import { ProductsModule } from "./products/products.module";
@@ -77,6 +78,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     NotificationsModule,
     LogisticsModule,
     FraudModule,
+    AuditModule,
     QueuesModule,
     WebhooksModule,
     HealthModule,

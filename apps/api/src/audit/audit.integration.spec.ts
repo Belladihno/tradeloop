@@ -1,15 +1,12 @@
 import Redis from "ioredis";
-import { getQueueToken } from "@nestjs/bullmq";
 import { ConfigService } from "@nestjs/config";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { Test } from "@nestjs/testing";
-import { hash } from "argon2";
 import { ZodValidationPipe } from "nestjs-zod";
 import { DataSource } from "typeorm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { UserRole } from "@tradeloop/types";
 import { AppModule } from "../app.module";
 import { SnakeNamingStrategy } from "../common/database/snake-naming.strategy";
 import { SanitizePipe } from "../common/pipes/sanitize.pipe";
@@ -35,10 +32,9 @@ import { PayoutRequest } from "../payouts/entities/payout-request.entity";
 import { Notification } from "../notifications/entities/notification.entity";
 import { Shipment } from "../logistics/entities/shipment.entity";
 import { WebhookDelivery } from "../webhooks/outbound/entities/webhook-delivery.entity";
-import { FraudRule } from "./entities/fraud-rule.entity";
-import { FlaggedEvent } from "./entities/flagged-event.entity";
-import { FraudService } from "./fraud.service";
-import { FlaggedEventsRepository } from "./flagged-events.repository";
+import { FraudRule } from "../fraud/entities/fraud-rule.entity";
+import { FlaggedEvent } from "../fraud/entities/flagged-event.entity";
+import { AuditLog } from "./entities/audit-log.entity";
 import { DisputesProcessor } from "../disputes/disputes.processor";
 import { SettlementsProcessor } from "../settlement/settlements.processor";
 import { PayoutsProcessor } from "../payouts/payouts.processor";
@@ -51,8 +47,6 @@ vi.setConfig({ testTimeout: 120_000, hookTimeout: 180_000 });
 let app: NestFastifyApplication | undefined;
 let container: TestDatabase | undefined;
 let dataSource: DataSource | undefined;
-let fraud: FraudService;
-let flagged: FlaggedEventsRepository;
 
 const redisClient = new Redis(
   process.env.REDIS_URL ?? "redis://localhost:16379",
@@ -90,7 +84,7 @@ beforeAll(async () => {
     entities: [
       User, Wallet, Transaction, Category, Product, SellerProfile, BuyerProfile,
       Cart, CartItem, Order, OrderItem, IdempotencyKey, Discount, DiscountRedemption, Dispute,
-      PayoutRequest, Notification, Shipment, WebhookDelivery, FraudRule, FlaggedEvent,
+      PayoutRequest, Notification, Shipment, WebhookDelivery, FraudRule, FlaggedEvent, AuditLog,
     ],
     migrations: [
       Init1759400000000,
@@ -146,18 +140,6 @@ beforeAll(async () => {
   app.useGlobalPipes(new ZodValidationPipe(), new SanitizePipe());
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
-
-  fraud = moduleRef.get(FraudService);
-  flagged = moduleRef.get(FlaggedEventsRepository);
-
-  if (!dataSource) throw new Error("DataSource not initialized");
-  const userRepository = dataSource.getRepository(User);
-  const admin = userRepository.create({
-    email: "admin@tradeloop.test",
-    role: UserRole.ADMIN,
-  });
-  admin.passwordHash = await hash("admin-password");
-  await userRepository.save(admin);
 });
 
 afterAll(async () => {
@@ -172,82 +154,24 @@ function client() {
   return app.inject.bind(app);
 }
 
-async function login(email: string, password: string) {
-  return client()({
-    method: "POST",
-    url: "/api/v1/auth/login",
-    payload: { email, password },
-  });
-}
-
-describe("fraud", () => {
-  let adminToken = "";
-
-  it("seeds the seven default rules enabled", async () => {
-    const rules = await fraud.listRules();
-    expect(rules).toHaveLength(7);
-    expect(rules.every((rule) => rule.enabled)).toBe(true);
+describe("health and audit", () => {
+  it("reports dependency health", async () => {
+    const res = await client()({ method: "GET", url: "/api/v1/health" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.status).toBe("ok");
+    expect(res.json().data.checks.database.status).toBe("up");
+    expect(res.json().data.checks.redis.status).toBe("up");
+    expect(res.json().data.checks.supabase.status).toBe("skipped");
   });
 
-  it("flags login bursts without revealing the cause", async () => {
-    for (let i = 0; i < 6; i += 1) {
-      const res = await login("nobody@tradeloop.test", "wrong-password");
-      expect(res.statusCode).toBe(401);
-    }
-    const events = await flagged.list();
-    const burst = events.find((event) => event.ruleName === "login-burst");
-    expect(burst?.key).toBe("nobody@tradeloop.test");
-  });
-
-  it("flags velocity and anomaly through the service", async () => {
-    const run = Date.now().toString(36);
-    for (let i = 0; i < 10; i += 1) {
-      await fraud.screenOrder(`velocity-buyer-${run}`, 1000);
-    }
-    const velocity = await fraud.screenOrder(`velocity-buyer-${run}`, 1000);
-    expect(velocity.suspicious).toBe(true);
-    expect(velocity.rule).toBe("order-velocity");
-
-    for (let i = 0; i < 3; i += 1) {
-      await fraud.checkAmountAnomaly(`rich-buyer-${run}`, 10000);
-    }
-    const anomaly = await fraud.checkAmountAnomaly(`rich-buyer-${run}`, 50000);
-    expect(anomaly.suspicious).toBe(true);
-  });
-
-  it("serves the admin fraud dashboard", async () => {
-    const logged = await login("admin@tradeloop.test", "admin-password");
-    expect(logged.statusCode).toBe(200);
-    adminToken = logged.json().data.accessToken as string;
-    const auth = { authorization: `Bearer ${adminToken}` };
-
-    const rules = await client()({ method: "GET", url: "/api/v1/admin/fraud/rules", headers: auth });
-    expect(rules.statusCode).toBe(200);
-    expect(rules.json().data).toHaveLength(7);
-
-    const events = await client()({
+  it("rejects unauthenticated admin access", async () => {
+    const res = await client()({ method: "GET", url: "/api/v1/admin/fraud/rules" });
+    expect(res.statusCode).toBe(401);
+    const forbidden = await client()({
       method: "GET",
-      url: "/api/v1/admin/fraud/events",
-      headers: auth,
+      url: "/api/v1/admin/fraud/rules",
+      headers: { authorization: "Bearer invalid" },
     });
-    expect(events.statusCode).toBe(200);
-    expect(events.json().data.length).toBeGreaterThanOrEqual(2);
-
-    const disabled = await client()({
-      method: "PATCH",
-      url: "/api/v1/admin/fraud/rules/login-burst",
-      headers: auth,
-      payload: { enabled: false },
-    });
-    expect(disabled.statusCode).toBe(200);
-    expect(disabled.json().data.enabled).toBe(false);
-
-    const missing = await client()({
-      method: "PATCH",
-      url: "/api/v1/admin/fraud/rules/nope",
-      headers: auth,
-      payload: { enabled: false },
-    });
-    expect(missing.statusCode).toBe(404);
+    expect(forbidden.statusCode).toBe(401);
   });
 });

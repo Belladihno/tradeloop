@@ -20,6 +20,7 @@ import { fromMinorUnits, toMinorUnits } from "../common/utils/money";
 import { CartRepository } from "../cart/cart.repository";
 import { DiscountService } from "../discounts/discount.service";
 import { EscrowService } from "../escrow/escrow.service";
+import { AuditService } from "../audit/audit.service";
 import { FraudService } from "../fraud/fraud.service";
 import { IdempotencyService } from "../idempotency/idempotency.service";
 import { WebhookDeliveryService } from "../webhooks/outbound/webhook-delivery.service";
@@ -65,6 +66,7 @@ export class OrdersService {
     private readonly emitter: EventEmitter2,
     private readonly webhooks: WebhookDeliveryService,
     private readonly fraud: FraudService,
+    private readonly audit: AuditService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -222,6 +224,13 @@ export class OrdersService {
         await this.products.restoreStock(item.productId, item.quantity, runner);
       }
       await runner.commitTransaction();
+      await this.audit.record({
+        actorId: buyerId,
+        action: "refund.issued",
+        entityType: "order",
+        entityId: orderId,
+        metadata: { amount: order.totalAmount },
+      });
     } catch (error) {
       await runner.rollbackTransaction();
       throw error;

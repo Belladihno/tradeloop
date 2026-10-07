@@ -27,6 +27,7 @@ function setup() {
       checkAmountAnomaly: vi.fn(async () => ({ suspicious: false })),
       checkNewAccount: vi.fn(async () => ({ suspicious: false })),
     } as never,
+    { record: vi.fn() } as never,
     {} as never,
     {} as DataSource,
   );

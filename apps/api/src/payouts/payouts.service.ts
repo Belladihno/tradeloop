@@ -14,6 +14,7 @@ import { InsufficientFundsException } from "../common/exceptions/insufficient-fu
 import { InvalidStateTransitionException } from "../common/exceptions/invalid-state-transition.exception";
 import { fromMinorUnits, toMinorUnits } from "../common/utils/money";
 import { NotificationsService } from "../notifications/notifications.service";
+import { AuditService } from "../audit/audit.service";
 import { WebhookDeliveryService } from "../webhooks/outbound/webhook-delivery.service";
 import { SellerProfilesService } from "../seller-profiles/seller-profiles.service";
 import { WalletRepository } from "../wallet/wallet.repository";
@@ -34,6 +35,7 @@ export class PayoutsService {
     private readonly crypto: EncryptionService,
     private readonly notifications: NotificationsService,
     private readonly webhooks: WebhookDeliveryService,
+    private readonly audit: AuditService,
     private readonly dataSource: DataSource,
     @Inject(PAYOUT_FRAUD_CHECK) private readonly fraudCheck: PayoutFraudCheck,
     @InjectQueue("payouts") private readonly payoutsQueue: Queue,
@@ -61,6 +63,13 @@ export class PayoutsService {
       resolvedAt: screening.suspicious ? new Date() : null,
       failureReason: screening.suspicious ? screening.reason ?? "Flagged by fraud screening" : null,
     });
+    await this.audit.record({
+      actorId: sellerId,
+      action: "payout.requested",
+      entityType: "payout",
+      entityId: record.id,
+      metadata: { amount },
+    });
     return record;
   }
 
@@ -75,6 +84,12 @@ export class PayoutsService {
     );
     payout.jobId = String(job.id ?? `${PROCESS_JOB_PREFIX}${payout.id}`);
     const approved = await this.payouts.save(payout);
+    await this.audit.record({
+      actorId: adminId,
+      action: "payout.approved",
+      entityType: "payout",
+      entityId: approved.id,
+    });
     await this.notifications.notify({
       userId: approved.sellerId,
       channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
@@ -91,7 +106,14 @@ export class PayoutsService {
     payout.adminId = adminId;
     payout.resolvedAt = new Date();
     payout.failureReason = reason ?? "Rejected by admin";
-    return this.payouts.save(payout);
+    const rejected = await this.payouts.save(payout);
+    await this.audit.record({
+      actorId: adminId,
+      action: "payout.rejected",
+      entityType: "payout",
+      entityId: rejected.id,
+    });
+    return rejected;
   }
 
   async process(payoutId: string): Promise<"completed" | "failed" | "duplicate"> {
@@ -113,6 +135,12 @@ export class PayoutsService {
         payout.failureReason = "Insufficient seller balance at processing time";
         await this.payouts.save(payout, runner);
         await runner.commitTransaction();
+        await this.audit.record({
+          actorId: payout.sellerId,
+          action: "payout.failed",
+          entityType: "payout",
+          entityId: payout.id,
+        });
         return "failed";
       }
       payout.status = PayoutStatus.COMPLETED;
@@ -129,6 +157,13 @@ export class PayoutsService {
       await this.webhooks.dispatch("payout.completed", payout.sellerId, {
         payoutId: payout.id,
         amount: payout.amount,
+      });
+      await this.audit.record({
+        actorId: payout.sellerId,
+        action: "payout.completed",
+        entityType: "payout",
+        entityId: payout.id,
+        metadata: { amount: payout.amount },
       });
       return "completed";
     } catch (error) {

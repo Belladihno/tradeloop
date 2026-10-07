@@ -20,6 +20,7 @@ import { DisputeService } from "../disputes/disputes.service";
 import { RejectPayoutDto } from "../payouts/dto/reject-payout.dto";
 import { PayoutsService } from "../payouts/payouts.service";
 import { WebhookDeliveryService } from "../webhooks/outbound/webhook-delivery.service";
+import { AuditService } from "../audit/audit.service";
 import { UpdateFraudRuleDto } from "../fraud/dto/update-fraud-rule.dto";
 import { FraudService } from "../fraud/fraud.service";
 import { UpdateCommissionDto } from "../seller-profiles/dto/update-commission.dto";
@@ -36,29 +37,64 @@ export class AdminController {
     private readonly payouts: PayoutsService,
     private readonly webhookDeliveries: WebhookDeliveryService,
     private readonly fraud: FraudService,
+    private readonly audit: AuditService,
   ) {}
 
   @Patch("sellers/:id/review")
-  review(@Param("id", ParseUUIDPipe) id: string) {
-    return this.sellers.review(id);
+  async review(@CurrentUser() admin: RequestUser, @Param("id", ParseUUIDPipe) id: string) {
+    const profile = await this.sellers.review(id);
+    await this.audit.record({
+      actorId: admin.id,
+      action: "seller.reviewed",
+      entityType: "seller",
+      entityId: id,
+    });
+    return profile;
   }
 
   @Patch("sellers/:id/approve")
-  approve(@Param("id", ParseUUIDPipe) id: string) {
-    return this.sellers.approve(id);
+  async approve(@CurrentUser() admin: RequestUser, @Param("id", ParseUUIDPipe) id: string) {
+    const profile = await this.sellers.approve(id);
+    await this.audit.record({
+      actorId: admin.id,
+      action: "seller.approved",
+      entityType: "seller",
+      entityId: id,
+    });
+    return profile;
   }
 
   @Patch("sellers/:id/reject")
-  reject(@Param("id", ParseUUIDPipe) id: string, @Body() dto: RejectSellerDto) {
-    return this.sellers.reject(id, dto.reason);
+  async reject(
+    @CurrentUser() admin: RequestUser,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: RejectSellerDto,
+  ) {
+    const profile = await this.sellers.reject(id, dto.reason);
+    await this.audit.record({
+      actorId: admin.id,
+      action: "seller.rejected",
+      entityType: "seller",
+      entityId: id,
+    });
+    return profile;
   }
 
   @Patch("sellers/:id/commission")
-  updateCommission(
+  async updateCommission(
+    @CurrentUser() admin: RequestUser,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateCommissionDto,
   ) {
-    return this.sellers.updateCommission(id, dto.commissionRate);
+    const profile = await this.sellers.updateCommission(id, dto.commissionRate);
+    await this.audit.record({
+      actorId: admin.id,
+      action: "seller.commission_updated",
+      entityType: "seller",
+      entityId: id,
+      metadata: { commissionRate: dto.commissionRate },
+    });
+    return profile;
   }
 
   @Patch("disputes/:id/resolve")
@@ -85,8 +121,15 @@ export class AdminController {
   }
 
   @Patch("webhook-deliveries/:id/retry")
-  retryWebhookDelivery(@Param("id", ParseUUIDPipe) id: string) {
-    return this.webhookDeliveries.retryDelivery(id);
+  async retryWebhookDelivery(@CurrentUser() admin: RequestUser, @Param("id", ParseUUIDPipe) id: string) {
+    const delivery = await this.webhookDeliveries.retryDelivery(id);
+    await this.audit.record({
+      actorId: admin.id,
+      action: "webhook.delivery_retried",
+      entityType: "webhook-delivery",
+      entityId: id,
+    });
+    return delivery;
   }
 
   @Get("fraud/events")
@@ -101,9 +144,19 @@ export class AdminController {
   }
 
   @Patch("fraud/rules/:name")
-  async updateFraudRule(@Param("name") name: string, @Body() dto: UpdateFraudRuleDto) {
+  async updateFraudRule(
+    @CurrentUser() admin: RequestUser,
+    @Param("name") name: string,
+    @Body() dto: UpdateFraudRuleDto,
+  ) {
     const updated = await this.fraud.updateRule(name as FraudRuleName, dto);
     if (!updated) throw new NotFoundException("Fraud rule not found");
+    await this.audit.record({
+      actorId: admin.id,
+      action: "fraud.rule_updated",
+      entityType: "fraud-rule",
+      entityId: updated.id,
+    });
     return updated;
   }
 }

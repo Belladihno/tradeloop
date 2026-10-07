@@ -5,6 +5,7 @@ import { v7 as uuidv7 } from "uuid";
 import { TransactionStatus, TransactionType, WalletType } from "@tradeloop/types";
 import type { Env } from "../config/env.validation";
 import { toMinorUnits } from "../common/utils/money";
+import { AuditService } from "../audit/audit.service";
 import { FraudService } from "../fraud/fraud.service";
 import { PaymentService } from "../payments/payment.service";
 import { UsersService } from "../users/users.service";
@@ -18,6 +19,7 @@ export class WalletService {
     private readonly payments: PaymentService,
     private readonly config: ConfigService<Env, true>,
     private readonly fraud: FraudService,
+    private readonly audit: AuditService,
     private readonly users: UsersService,
     private readonly dataSource: DataSource,
   ) {}
@@ -109,6 +111,13 @@ export class WalletService {
       if (funded?.userId && fundedUser) {
         await this.fraud.checkAmountAnomaly(funded.userId, toMinorUnits(amount));
         await this.fraud.checkNewAccount(funded.userId, fundedUser.createdAt, toMinorUnits(amount));
+        await this.audit.record({
+          actorId: funded.userId,
+          action: "funding.completed",
+          entityType: "wallet",
+          entityId: funded.id,
+          metadata: { amount, reference },
+        });
       }
       return "completed";
     } catch (error) {

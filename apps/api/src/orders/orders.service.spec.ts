@@ -97,6 +97,7 @@ function setup() {
   const emitter = { emit: vi.fn() };
   const webhooks = { dispatch: vi.fn() };
   const fraud = { screenOrder: vi.fn(async () => ({ suspicious: false })) };
+  const audit = { record: vi.fn() };
   const queryRunner = runner();
   const dataSource = { createQueryRunner: vi.fn(() => queryRunner) };
   const state: { current?: OrderStatus } = {};  const service = new OrdersService(
@@ -112,6 +113,7 @@ function setup() {
     emitter as unknown as EventEmitter2,
     webhooks as never,
     fraud as never,
+    audit as never,
     dataSource as unknown as DataSource,
   );
   return { service, orders, carts, products, wallets, walletService, sellers, discounts, idempotency, escrow, emitter, webhooks, fraud, state };

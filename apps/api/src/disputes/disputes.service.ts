@@ -14,6 +14,7 @@ import {
   type DisputeResolution,
 } from "@tradeloop/types";
 import { InvalidStateTransitionException } from "../common/exceptions/invalid-state-transition.exception";
+import { AuditService } from "../audit/audit.service";
 import { EscrowService } from "../escrow/escrow.service";
 import { FraudService } from "../fraud/fraud.service";
 import { OrdersRepository } from "../orders/orders.repository";
@@ -39,6 +40,7 @@ export class DisputeService {
     private readonly escrow: EscrowService,
     private readonly settlement: SettlementService,
     private readonly fraud: FraudService,
+    private readonly audit: AuditService,
     private readonly dataSource: DataSource,
     @InjectQueue("disputes") private readonly expiryQueue: Queue,
   ) {}
@@ -78,6 +80,12 @@ export class DisputeService {
       dispute.expiryJobId = String(job.id ?? `${EXPIRY_JOB_PREFIX}${dispute.id}`);
       const saved = await this.disputes.save(dispute, runner);
       await runner.commitTransaction();
+      await this.audit.record({
+        actorId: buyerId,
+        action: "dispute.raised",
+        entityType: "dispute",
+        entityId: saved.id,
+      });
       await this.fraud.recordDispute(buyerId);
       await this.fraud.screenDisputeRate(buyerId);
       return saved;
@@ -112,6 +120,12 @@ export class DisputeService {
       return "duplicate";
     }
     await this.resolveForSeller(dispute, dispute.adminId ?? null, DisputeStatus.EXPIRED);
+    await this.audit.record({
+      actorId: null,
+      action: "dispute.expired",
+      entityType: "dispute",
+      entityId: dispute.id,
+    });
     return "expired";
   }
 
@@ -142,6 +156,19 @@ export class DisputeService {
       dispute.resolvedAt = new Date();
       const saved = await this.disputes.save(dispute, runner);
       await runner.commitTransaction();
+      await this.audit.record({
+        actorId: adminId,
+        action: "refund.issued",
+        entityType: "order",
+        entityId: order.id,
+        metadata: { amount: order.totalAmount },
+      });
+      await this.audit.record({
+        actorId: adminId,
+        action: "dispute.resolved",
+        entityType: "dispute",
+        entityId: saved.id,
+      });
       return saved;
     } catch (error) {
       await runner.rollbackTransaction();
@@ -161,7 +188,16 @@ export class DisputeService {
     dispute.status = status;
     dispute.adminId = adminId;
     dispute.resolvedAt = new Date();
-    return this.disputes.save(dispute);
+    const saved = await this.disputes.save(dispute);
+    if (status === DisputeStatus.RESOLVED_SELLER) {
+      await this.audit.record({
+        actorId: adminId,
+        action: "dispute.resolved",
+        entityType: "dispute",
+        entityId: saved.id,
+      });
+    }
+    return saved;
   }
 
   private async requireOpenDispute(disputeId: string): Promise<Dispute> {
