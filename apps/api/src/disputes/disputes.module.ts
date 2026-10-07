@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { EscrowModule } from "../escrow/escrow.module";
+import { FraudModule } from "../fraud/fraud.module";
 import { OrdersModule } from "../orders/orders.module";
 import { ProductsModule } from "../products/products.module";
 import { QueuesModule } from "../queues/queues.module";
@@ -20,6 +21,7 @@ import { DisputesRepository } from "./disputes.repository";
     WalletModule,
     EscrowModule,
     SettlementModule,
+    FraudModule,
     QueuesModule,
   ],
   controllers: [DisputesController],

@@ -10,3 +10,4 @@ export * from "./discount.js";
 export * from "./dispute.js";
 export * from "./payout.js";
 export * from "./shipment.js";
+export * from "./fraud.js";

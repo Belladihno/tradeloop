@@ -23,6 +23,11 @@ function setup() {
     wallets as unknown as WalletRepository,
     {} as PaymentService,
     {} as ConfigService,
+    {
+      checkAmountAnomaly: vi.fn(async () => ({ suspicious: false })),
+      checkNewAccount: vi.fn(async () => ({ suspicious: false })),
+    } as never,
+    {} as never,
     {} as DataSource,
   );
   return { service, wallets };

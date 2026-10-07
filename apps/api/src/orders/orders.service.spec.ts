@@ -96,6 +96,7 @@ function setup() {
   const escrow = { holdFunds: vi.fn(), refundFunds: vi.fn(), releaseFunds: vi.fn() };
   const emitter = { emit: vi.fn() };
   const webhooks = { dispatch: vi.fn() };
+  const fraud = { screenOrder: vi.fn(async () => ({ suspicious: false })) };
   const queryRunner = runner();
   const dataSource = { createQueryRunner: vi.fn(() => queryRunner) };
   const state: { current?: OrderStatus } = {};  const service = new OrdersService(
@@ -110,9 +111,10 @@ function setup() {
     escrow as unknown as EscrowService,
     emitter as unknown as EventEmitter2,
     webhooks as never,
+    fraud as never,
     dataSource as unknown as DataSource,
   );
-  return { service, orders, carts, products, wallets, walletService, sellers, discounts, idempotency, escrow, emitter, webhooks, state };
+  return { service, orders, carts, products, wallets, walletService, sellers, discounts, idempotency, escrow, emitter, webhooks, fraud, state };
 }
 
 const ADDRESS = { line1: "1 Adeola St", city: "Lagos", country: "NG" };

@@ -33,6 +33,10 @@ export class WalletRepository {
     return this.wallets.findOne({ where: { userId, type, deletedAt: IsNull() } });
   }
 
+  findWalletById(id: string): Promise<Wallet | null> {
+    return this.wallets.findOne({ where: { id, deletedAt: IsNull() } });
+  }
+
   findSystemWallet(type: WalletType.PLATFORM | WalletType.ESCROW): Promise<Wallet | null> {
     return this.wallets.findOne({ where: { type, deletedAt: IsNull() } });
   }

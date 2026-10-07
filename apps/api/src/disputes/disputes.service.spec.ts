@@ -81,6 +81,10 @@ function setup() {
   const queryRunner = runner();
   const dataSource = { createQueryRunner: vi.fn(() => queryRunner) };
   const expiryQueue = { add: vi.fn(), getJob: vi.fn() };
+  const fraud = {
+    recordDispute: vi.fn(),
+    screenDisputeRate: vi.fn(async () => ({ suspicious: false })),
+  };
   const service = new DisputeService(
     disputes as unknown as DisputesRepository,
     orders as unknown as OrdersRepository,
@@ -89,10 +93,11 @@ function setup() {
     walletService as unknown as WalletService,
     escrow as unknown as EscrowService,
     settlement as unknown as SettlementService,
+    fraud as never,
     dataSource as unknown as DataSource,
     expiryQueue as never,
   );
-  return { service, disputes, orders, products, wallets, walletService, escrow, settlement, expiryQueue };
+  return { service, disputes, orders, products, wallets, walletService, escrow, settlement, fraud, expiryQueue };
 }
 
 describe("DisputeService", () => {

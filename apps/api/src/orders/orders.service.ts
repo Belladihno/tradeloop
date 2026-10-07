@@ -20,6 +20,7 @@ import { fromMinorUnits, toMinorUnits } from "../common/utils/money";
 import { CartRepository } from "../cart/cart.repository";
 import { DiscountService } from "../discounts/discount.service";
 import { EscrowService } from "../escrow/escrow.service";
+import { FraudService } from "../fraud/fraud.service";
 import { IdempotencyService } from "../idempotency/idempotency.service";
 import { WebhookDeliveryService } from "../webhooks/outbound/webhook-delivery.service";
 import { ORDER_DELIVERED_EVENT } from "./events";
@@ -63,6 +64,7 @@ export class OrdersService {
     private readonly escrow: EscrowService,
     private readonly emitter: EventEmitter2,
     private readonly webhooks: WebhookDeliveryService,
+    private readonly fraud: FraudService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -345,6 +347,7 @@ export class OrdersService {
     for (const order of created) {
       await this.emitOrderEvent("order.created", order);
       await this.emitOrderEvent("order.paid", order);
+      await this.fraud.screenOrder(buyerId, toMinorUnits(order.totalAmount));
     }
     return { orders: created };
   }
