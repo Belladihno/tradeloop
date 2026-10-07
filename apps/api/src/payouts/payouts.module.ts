@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { QueuesModule } from "../queues/queues.module";
 import { SellerProfilesModule } from "../seller-profiles/seller-profiles.module";
 import { WalletModule } from "../wallet/wallet.module";
@@ -15,6 +16,7 @@ import { PayoutsService } from "./payouts.service";
     TypeOrmModule.forFeature([PayoutRequest]),
     WalletModule,
     SellerProfilesModule,
+    NotificationsModule,
     QueuesModule,
   ],
   controllers: [PayoutsController],

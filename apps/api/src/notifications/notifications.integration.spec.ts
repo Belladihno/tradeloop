@@ -9,7 +9,12 @@ import { hash } from "argon2";
 import { ZodValidationPipe } from "nestjs-zod";
 import { DataSource } from "typeorm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { PayoutStatus, UserRole, WalletType } from "@tradeloop/types";
+import {
+  NotificationChannel,
+  NotificationStatus,
+  UserRole,
+  WalletType,
+} from "@tradeloop/types";
 import { AppModule } from "../app.module";
 import { SnakeNamingStrategy } from "../common/database/snake-naming.strategy";
 import { SanitizePipe } from "../common/pipes/sanitize.pipe";
@@ -33,12 +38,15 @@ import { IdempotencyKey } from "../idempotency/entities/idempotency-key.entity";
 import { Discount } from "../discounts/entities/discount.entity";
 import { DiscountRedemption } from "../discounts/entities/discount-redemption.entity";
 import { Dispute } from "../disputes/entities/dispute.entity";
-import { PayoutRequest } from "./entities/payout-request.entity";
-import { Notification } from "../notifications/entities/notification.entity";
+import { PayoutRequest } from "../payouts/entities/payout-request.entity";
+import { Notification } from "./entities/notification.entity";
+import { EmailChannel } from "./email.channel";
+import { NotificationStream } from "./notification-stream";
+import { NotificationsProcessor } from "./notifications.processor";
+import { NotificationsService } from "./notifications.service";
 import { DisputesProcessor } from "../disputes/disputes.processor";
 import { SettlementsProcessor } from "../settlement/settlements.processor";
-import { PayoutsProcessor } from "./payouts.processor";
-import { PayoutsService } from "./payouts.service";
+import { PayoutsProcessor } from "../payouts/payouts.processor";
 import { startTestDatabase, type TestDatabase } from "../test/test-database";
 
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 180_000 });
@@ -46,7 +54,8 @@ vi.setConfig({ testTimeout: 120_000, hookTimeout: 180_000 });
 let app: NestFastifyApplication | undefined;
 let container: TestDatabase | undefined;
 let dataSource: DataSource | undefined;
-let payouts: PayoutsService;
+let notifications: NotificationsService;
+let stream: NotificationStream;
 let wallets: WalletRepository;
 let profiles: SellerProfilesService;
 
@@ -55,7 +64,13 @@ const redisClient = new Redis(
   { maxRetriesPerRequest: 5 },
 );
 
-const payoutsQueue = { add: vi.fn(async () => ({ id: "job-1" })) };
+const notificationsQueue = { add: vi.fn(async () => ({ id: "job-1" })) };
+const emailOutbox: { userId: string; subject: string; body: string }[] = [];
+const emailFake = {
+  send: vi.fn(async (payload: { userId: string; subject: string; body: string }) => {
+    emailOutbox.push(payload);
+  }),
+};
 
 beforeAll(async () => {
   container = await startTestDatabase();
@@ -112,8 +127,12 @@ beforeAll(async () => {
     .useValue(redisClient)
     .overrideProvider(ConfigService)
     .useValue({ get: (key: string) => process.env[key] })
-    .overrideProvider(getQueueToken("payouts"))
-    .useValue(payoutsQueue)
+    .overrideProvider(getQueueToken("notifications"))
+    .useValue(notificationsQueue)
+    .overrideProvider(EmailChannel)
+    .useValue(emailFake)
+    .overrideProvider(NotificationsProcessor)
+    .useValue({})
     .overrideProvider(PayoutsProcessor)
     .useValue({})
     .overrideProvider(SettlementsProcessor)
@@ -133,7 +152,8 @@ beforeAll(async () => {
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
 
-  payouts = moduleRef.get(PayoutsService);
+  notifications = moduleRef.get(NotificationsService);
+  stream = moduleRef.get(NotificationStream);
   wallets = moduleRef.get(WalletRepository);
   profiles = moduleRef.get(SellerProfilesService);
 
@@ -188,164 +208,124 @@ async function userIdOf(token: string): Promise<string> {
   return res.json().data.id as string;
 }
 
-async function creditSeller(userId: string, amount: string): Promise<void> {
-  if (!dataSource) throw new Error("DataSource not initialized");
-  const sellerWallet = await wallets.findByUserAndType(userId, WalletType.SELLER);
-  if (!sellerWallet) throw new Error("Seller wallet missing");
-  const runner = dataSource.createQueryRunner();
-  await runner.connect();
-  await runner.startTransaction();
-  try {
-    await wallets.creditAtomic(sellerWallet.id, amount, runner);
-    await runner.commitTransaction();
-  } catch (error) {
-    await runner.rollbackTransaction();
-    throw error;
-  } finally {
-    await runner.release();
-  }
-}
+describe("notifications", () => {
+  let userToken = "";
+  let userId = "";
 
-async function sellerBalance(userId: string): Promise<string> {
-  const wallet = await wallets.findByUserAndType(userId, WalletType.SELLER);
-  if (!wallet) throw new Error("Seller wallet missing");
-  return wallet.balance;
-}
+  it("registers a user for the notification flow", async () => {
+    userToken = await register("notify@tradeloop.test");
+    userId = await userIdOf(userToken);
+  });
 
-describe("payouts", () => {
-  let sellerToken = "";
-  let sellerId = "";
-  let adminToken = "";
+  it("stores pending rows and enqueues delivery per channel", async () => {
+    const created = await notifications.notify({
+      userId,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+      subject: "Welcome",
+      body: "Your account is ready",
+    });
+    expect(created).toHaveLength(2);
+    expect(created.every((n) => n.status === NotificationStatus.PENDING)).toBe(true);
+    expect(notificationsQueue.add).toHaveBeenCalledWith(
+      "send",
+      { notificationId: created[0].id },
+    );
+  });
 
-  it("prepares an approved seller with a settled balance", async () => {
-    adminToken = await login("admin@tradeloop.test", "admin-password");
-    sellerToken = await register("seller@tradeloop.test");
-    sellerId = await userIdOf(sellerToken);
+  it("delivers email through the email channel and in-app through the stream", async () => {
+    const received: unknown[] = [];
+    stream.subscribe(userId).subscribe((event) => received.push(event));
+
+    const created = await notifications.notify({
+      userId,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
+      subject: "Order update",
+      body: "Your order shipped",
+    });
+    for (const record of created) {
+      expect(await notifications.send(record.id)).toBe("sent");
+    }
+
+    expect(emailFake.send).toHaveBeenCalledWith(
+      expect.objectContaining({ userId, subject: "Order update" }),
+    );
+    expect(received).toHaveLength(1);
+    expect(await notifications.send(created[0].id)).toBe("duplicate");
+  });
+
+  it("lists a user's notifications over HTTP", async () => {
+    const res = await client()({
+      method: "GET",
+      url: "/api/v1/notifications/mine",
+      headers: { authorization: `Bearer ${userToken}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("marks failed email deliveries instead of throwing", async () => {
+    emailFake.send.mockRejectedValueOnce(new Error("SMTP down"));
+    const [record] = await notifications.notify({
+      userId,
+      channels: [NotificationChannel.EMAIL],
+      subject: "Doomed",
+      body: "This will not send",
+    });
+    expect(await notifications.send(record.id)).toBe("failed");
+  });
+
+  it("notifies sellers when payouts are approved", async () => {
+    const adminToken = await login("admin@tradeloop.test", "admin-password");
+    const sellerToken = await register("payout-seller@tradeloop.test");
+    const sellerId = await userIdOf(sellerToken);
     const onboarded = await client()({
       method: "POST",
       url: "/api/v1/seller/onboard",
       headers: { authorization: `Bearer ${sellerToken}` },
-      payload: { storeName: "Payout Store", bankAccountNumber: "0123456789", bankCode: "058" },
+      payload: { storeName: "Notify Store", bankAccountNumber: "0123456789", bankCode: "058" },
     });
     expect(onboarded.statusCode).toBe(201);
     const profileId = onboarded.json().data.id as string;
     await profiles.review(profileId);
     await profiles.approve(profileId);
-    await creditSeller(sellerId, "50000.00");
-    expect(await sellerBalance(sellerId)).toBe("50000.00");
-  });
 
-  it("requests a payout and snapshots the bank destination", async () => {
-    const res = await client()({
-      method: "POST",
-      url: "/api/v1/payouts",
-      headers: { authorization: `Bearer ${sellerToken}` },
-      payload: { amount: "2500.00" },
-    });
-    expect(res.statusCode).toBe(201);
-    expect(res.json().data.status).toBe(PayoutStatus.PENDING);
-    expect(res.json().data.bankCode).toBe("058");
-    expect(res.json().data.bankAccountLast4).toBe("6789");
+    if (!dataSource) throw new Error("DataSource not initialized");
+    const sellerWallet = await wallets.findByUserAndType(sellerId, WalletType.SELLER);
+    if (!sellerWallet) throw new Error("Seller wallet missing");
+    const runner = dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      await wallets.creditAtomic(sellerWallet.id, "50000.00", runner);
+      await runner.commitTransaction();
+    } catch (error) {
+      await runner.rollbackTransaction();
+      throw error;
+    } finally {
+      await runner.release();
+    }
 
-    const listed = await client()({
-      method: "GET",
-      url: "/api/v1/payouts/mine",
-      headers: { authorization: `Bearer ${sellerToken}` },
-    });
-    expect(listed.statusCode).toBe(200);
-    expect(listed.json().data).toHaveLength(1);
-  });
-
-  it("refuses requests above the seller balance", async () => {
-    const res = await client()({
-      method: "POST",
-      url: "/api/v1/payouts",
-      headers: { authorization: `Bearer ${sellerToken}` },
-      payload: { amount: "99999.00" },
-    });
-    expect(res.statusCode).toBe(400);
-  });
-
-  it("approves payouts and processes them out of the seller wallet", async () => {
-    const mine = await client()({
-      method: "GET",
-      url: "/api/v1/payouts/mine",
-      headers: { authorization: `Bearer ${sellerToken}` },
-    });
-    const payoutId = mine.json().data[0].id as string;
-
-    const approved = await client()({
-      method: "PATCH",
-      url: `/api/v1/admin/payouts/${payoutId}/approve`,
-      headers: { authorization: `Bearer ${adminToken}` },
-    });
-    expect(approved.statusCode).toBe(200);
-    expect(approved.json().data.status).toBe(PayoutStatus.APPROVED);
-    expect(payoutsQueue.add).toHaveBeenCalledWith("process", { payoutId }, expect.anything());
-
-    expect(await payouts.process(payoutId)).toBe("completed");
-    expect(await payouts.process(payoutId)).toBe("duplicate");
-    expect(await sellerBalance(sellerId)).toBe("47500.00");
-  });
-
-  it("fails payouts when the balance is gone at processing time", async () => {
-    const first = await client()({
-      method: "POST",
-      url: "/api/v1/payouts",
-      headers: { authorization: `Bearer ${sellerToken}` },
-      payload: { amount: "45000.00" },
-    });
-    expect(first.statusCode).toBe(201);
-    const second = await client()({
-      method: "POST",
-      url: "/api/v1/payouts",
-      headers: { authorization: `Bearer ${sellerToken}` },
-      payload: { amount: "45000.00" },
-    });
-    expect(second.statusCode).toBe(201);
-    const firstId = first.json().data.id as string;
-    const secondId = second.json().data.id as string;
-
-    await client()({
-      method: "PATCH",
-      url: `/api/v1/admin/payouts/${firstId}/approve`,
-      headers: { authorization: `Bearer ${adminToken}` },
-    });
-    await client()({
-      method: "PATCH",
-      url: `/api/v1/admin/payouts/${secondId}/approve`,
-      headers: { authorization: `Bearer ${adminToken}` },
-    });
-
-    expect(await payouts.process(firstId)).toBe("completed");
-    expect(await payouts.process(secondId)).toBe("failed");
-    expect(await sellerBalance(sellerId)).toBe("2500.00");
-  });
-
-  it("rejects payouts with a reason and blocks later approval", async () => {
     const made = await client()({
       method: "POST",
       url: "/api/v1/payouts",
       headers: { authorization: `Bearer ${sellerToken}` },
-      payload: { amount: "100.00" },
+      payload: { amount: "1000.00" },
     });
     expect(made.statusCode).toBe(201);
-    const payoutId = made.json().data.id as string;
 
-    const rejected = await client()({
+    const approved = await client()({
       method: "PATCH",
-      url: `/api/v1/admin/payouts/${payoutId}/reject`,
-      headers: { authorization: `Bearer ${adminToken}` },
-      payload: { reason: "Bank details need review" },
-    });
-    expect(rejected.statusCode).toBe(200);
-    expect(rejected.json().data.status).toBe(PayoutStatus.REJECTED);
-
-    const late = await client()({
-      method: "PATCH",
-      url: `/api/v1/admin/payouts/${payoutId}/approve`,
+      url: `/api/v1/admin/payouts/${made.json().data.id as string}/approve`,
       headers: { authorization: `Bearer ${adminToken}` },
     });
-    expect(late.statusCode).toBe(409);
+    expect(approved.statusCode).toBe(200);
+
+    const listed = await client()({
+      method: "GET",
+      url: "/api/v1/notifications/mine",
+      headers: { authorization: `Bearer ${sellerToken}` },
+    });
+    const subjects = (listed.json().data as { subject: string }[]).map((n) => n.subject);
+    expect(subjects).toContain("Payout approved");
   });
 });

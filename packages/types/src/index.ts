@@ -6,3 +6,4 @@ export * from "./order.js";
 export * from "./discount.js";
 export * from "./dispute.js";
 export * from "./payout.js";
+export * from "./notification.js";
