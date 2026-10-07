@@ -1,10 +1,15 @@
 import { Body, Controller, HttpCode, Post, Req } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
+import { SendboxWebhookDto } from "../logistics/dto/sendbox-webhook.dto";
+import { LogisticsService } from "../logistics/logistics.service";
 import { WebhookHandlerService, type FlutterwaveChargeEvent, type PaystackChargeEvent } from "./webhook-handler.service";
 
 @Controller("webhooks")
 export class WebhooksController {
-  constructor(private readonly handler: WebhookHandlerService) {}
+  constructor(
+    private readonly handler: WebhookHandlerService,
+    private readonly logistics: LogisticsService,
+  ) {}
 
   @Post("paystack")
   @HttpCode(200)
@@ -25,6 +30,17 @@ export class WebhooksController {
   ): Promise<{ status: string }> {
     const signature = req.headers["verif-hash"] as string | undefined;
     const status = await this.handler.handleFlutterwaveEvent(body, signature);
+    return { status };
+  }
+
+  @Post("sendbox")
+  @HttpCode(200)
+  async sendbox(
+    @Req() req: FastifyRequest & { rawBody?: Buffer },
+    @Body() body: SendboxWebhookDto,
+  ): Promise<{ status: string }> {
+    const signature = req.headers["x-sendbox-signature"] as string | undefined;
+    const status = await this.logistics.handleSendboxWebhook(signature, req.rawBody, body);
     return { status };
   }
 }

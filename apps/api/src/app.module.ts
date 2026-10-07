@@ -27,6 +27,7 @@ import { DisputesModule } from "./disputes/disputes.module";
 import { EscrowModule } from "./escrow/escrow.module";
 import { IdempotencyModule } from "./idempotency/idempotency.module";
 import { OrdersModule } from "./orders/orders.module";
+import { LogisticsModule } from "./logistics/logistics.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { PayoutsModule } from "./payouts/payouts.module";
 import { ProductsModule } from "./products/products.module";
@@ -73,6 +74,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     DisputesModule,
     PayoutsModule,
     NotificationsModule,
+    LogisticsModule,
     QueuesModule,
     WebhooksModule,
     HealthModule,
