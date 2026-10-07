@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { OrderStatus, WalletType } from "@tradeloop/types";
+import { AuditService } from "../audit/audit.service";
 import { fromMinorUnits, toMinorUnits } from "../common/utils/money";
 import { EscrowService } from "../escrow/escrow.service";
 import { OrdersRepository } from "../orders/orders.repository";
@@ -16,6 +17,7 @@ export class SettlementService {
     private readonly walletService: WalletService,
     private readonly sellers: SellerProfilesService,
     private readonly escrow: EscrowService,
+    private readonly audit: AuditService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -55,6 +57,13 @@ export class SettlementService {
       });
       await this.orders.markCompleted(orderId, commission, runner);
       await runner.commitTransaction();
+      await this.audit.record({
+        actorId: order.buyerId,
+        action: "settlement.completed",
+        entityType: "order",
+        entityId: orderId,
+        metadata: { netAmount: net, commissionAmount: commission },
+      });
       return "completed";
     } catch (error) {
       await runner.rollbackTransaction();

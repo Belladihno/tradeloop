@@ -10,3 +10,4 @@ export * from "./notification.js";
 export * from "./shipment.js";
 export * from "./outbound-webhook.js";
 export * from "./fraud.js";
+export * from "./audit.js";

@@ -35,6 +35,7 @@ import { DiscountRedemption } from "../discounts/entities/discount-redemption.en
 import { Dispute } from "../disputes/entities/dispute.entity";
 import { PayoutRequest } from "./entities/payout-request.entity";
 import { WebhookDelivery } from "../webhooks/outbound/entities/webhook-delivery.entity";
+import { AuditLog } from "../audit/entities/audit-log.entity";
 import { Notification } from "../notifications/entities/notification.entity";
 import { DisputesProcessor } from "../disputes/disputes.processor";
 import { SettlementsProcessor } from "../settlement/settlements.processor";
@@ -80,6 +81,8 @@ beforeAll(async () => {
   const { Shipments1760500000000 } = await import("../migrations/1760500000000-Shipments");
   const { SellerWebhooks1760600000000 } = await import("../migrations/1760600000000-SellerWebhooks");
   const { WebhookDeliveries1760600000001 } = await import("../migrations/1760600000001-WebhookDeliveries");
+  const { Fraud1760700000000 } = await import("../migrations/1760700000000-Fraud");
+  const { AuditLogs1760800000000 } = await import("../migrations/1760800000000-AuditLogs");
 
   dataSource = new DataSource({
     type: "postgres",
@@ -87,7 +90,7 @@ beforeAll(async () => {
     entities: [
       User, Wallet, Transaction, Category, Product, SellerProfile, BuyerProfile,
       Cart, CartItem, Order, OrderItem, IdempotencyKey, Discount, DiscountRedemption, Dispute,
-      PayoutRequest, Notification, WebhookDelivery,
+      PayoutRequest, Notification, WebhookDelivery, AuditLog,
     ],
     migrations: [
       Init1759400000000,
@@ -107,6 +110,8 @@ beforeAll(async () => {
       Shipments1760500000000,
       SellerWebhooks1760600000000,
       WebhookDeliveries1760600000001,
+      Fraud1760700000000,
+      AuditLogs1760800000000,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,
@@ -295,6 +300,13 @@ describe("payouts", () => {
     expect(approved.statusCode).toBe(200);
     expect(approved.json().data.status).toBe(PayoutStatus.APPROVED);
     expect(payoutsQueue.add).toHaveBeenCalledWith("process", { payoutId }, expect.anything());
+
+    if (!dataSource) throw new Error("DataSource not initialized");
+    const auditRows = await dataSource.getRepository(AuditLog).find({
+      where: { action: "payout.approved" },
+    });
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0].entityId).toBe(payoutId);
 
     expect(await payouts.process(payoutId)).toBe("completed");
     expect(await payouts.process(payoutId)).toBe("duplicate");

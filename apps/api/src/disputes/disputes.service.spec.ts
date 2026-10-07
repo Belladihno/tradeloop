@@ -85,6 +85,7 @@ function setup() {
     recordDispute: vi.fn(),
     screenDisputeRate: vi.fn(async () => ({ suspicious: false })),
   };
+  const audit = { record: vi.fn() };
   const service = new DisputeService(
     disputes as unknown as DisputesRepository,
     orders as unknown as OrdersRepository,
@@ -94,6 +95,7 @@ function setup() {
     escrow as unknown as EscrowService,
     settlement as unknown as SettlementService,
     fraud as never,
+    audit as never,
     dataSource as unknown as DataSource,
     expiryQueue as never,
   );

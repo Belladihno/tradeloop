@@ -40,6 +40,7 @@ function setup() {
   const walletService = { ensureSellerWallet: vi.fn() };
   const sellers = { myProfile: vi.fn() };
   const escrow = { releaseFunds: vi.fn() };
+  const audit = { record: vi.fn() };
   const queryRunner = runner();
   const dataSource = { createQueryRunner: vi.fn(() => queryRunner) };
   const service = new SettlementService(
@@ -48,6 +49,7 @@ function setup() {
     walletService as unknown as WalletService,
     sellers as unknown as SellerProfilesService,
     escrow as unknown as EscrowService,
+    audit as never,
     dataSource as unknown as DataSource,
   );
   return { service, orders, wallets, walletService, sellers, escrow, dataSource };

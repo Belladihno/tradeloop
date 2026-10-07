@@ -36,6 +36,7 @@ import { DisputesProcessor } from "../disputes/disputes.processor";
 import { SettlementsProcessor } from "../settlement/settlements.processor";
 import { SettlementService } from "../settlement/settlement.service";
 import Redis from "ioredis";
+import { AuditLog } from "../audit/entities/audit-log.entity";
 import { startTestDatabase, type TestDatabase } from "../test/test-database";
 
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 180_000 });
@@ -83,6 +84,8 @@ beforeAll(async () => {
   const { Shipments1760500000000 } = await import("../migrations/1760500000000-Shipments");
   const { SellerWebhooks1760600000000 } = await import("../migrations/1760600000000-SellerWebhooks");
   const { WebhookDeliveries1760600000001 } = await import("../migrations/1760600000001-WebhookDeliveries");
+  const { Fraud1760700000000 } = await import("../migrations/1760700000000-Fraud");
+  const { AuditLogs1760800000000 } = await import("../migrations/1760800000000-AuditLogs");
 
   dataSource = new DataSource({
     type: "postgres",
@@ -90,6 +93,7 @@ beforeAll(async () => {
     entities: [
       User, Wallet, Transaction, Category, Product, SellerProfile, BuyerProfile,
       Cart, CartItem, Order, OrderItem, IdempotencyKey, Discount, DiscountRedemption, Dispute,
+      AuditLog,
     ],
     migrations: [
       Init1759400000000,
@@ -109,6 +113,8 @@ beforeAll(async () => {
       Shipments1760500000000,
       SellerWebhooks1760600000000,
       WebhookDeliveries1760600000001,
+      Fraud1760700000000,
+      AuditLogs1760800000000,
     ],
     namingStrategy: new SnakeNamingStrategy(),
     synchronize: false,
@@ -293,6 +299,13 @@ describe("settlement and disputes", () => {
     const escrow = await wallets.findSystemWallet(WalletType.ESCROW);
     expect(platform?.balance).toBe("500.00");
     expect(escrow?.balance).toBe("0.00");
+
+    if (!dataSource) throw new Error("DataSource not initialized");
+    const auditRows = await dataSource.getRepository(AuditLog).find({
+      where: { action: "settlement.completed" },
+    });
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0].entityId).toBe(settledOrderId);
   });
 
   it("refunds buyers on dispute resolution", async () => {
