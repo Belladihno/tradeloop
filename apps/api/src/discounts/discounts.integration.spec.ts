@@ -2,7 +2,8 @@ import Redis from "ioredis";
 import { startTestDatabase, type TestDatabase } from "../test/test-database";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
-import { ThrottlerGuard } from "@nestjs/throttler";
+import { ThrottlerStorage } from "@nestjs/throttler";
+import { inertThrottlerStorage } from "../test/no-throttle";
 import { Test } from "@nestjs/testing";
 import { hash } from "argon2";
 import { createHmac } from "crypto";
@@ -124,8 +125,8 @@ beforeAll(async () => {
     .useValue(redisClient)
     .overrideProvider(ConfigService)
     .useValue({ get: (key: string) => process.env[key] })
-    .overrideGuard(ThrottlerGuard)
-    .useValue({ canActivate: () => true })
+    .overrideProvider(ThrottlerStorage)
+    .useValue(inertThrottlerStorage)
     .compile();
 
   app = moduleRef.createNestApplication<NestFastifyApplication>(
@@ -423,6 +424,9 @@ describe("discounts", () => {
         value: "200.00",
         scope: DiscountScope.SELLER,
         scopeId: sellerId,
+        // Explicit past start: the app and database clocks can disagree by a
+        // couple of seconds, and a just-created row must already read as active.
+        startsAt: new Date(Date.now() - 3_600_000).toISOString(),
       },
     });
     expect(created.statusCode).toBe(201);
