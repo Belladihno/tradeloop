@@ -8,6 +8,7 @@ import {
 } from "@nestjs/platform-fastify";
 import helmet from "@fastify/helmet";
 import { ZodValidationPipe } from "nestjs-zod";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { registerRequestIdHook } from "./common/middleware/request-id.middleware";
 import { SanitizePipe } from "./common/pipes/sanitize.pipe";
@@ -33,6 +34,16 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(new ZodValidationPipe(), new SanitizePipe());
 
   if (config.get("SWAGGER_ENABLED", { infer: true })) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle("Tradeloop API")
+      .setDescription(
+        "Marketplace API: catalog, cart, orders, escrow, payouts, shipments, notifications, and admin.",
+      )
+      .setVersion("1.0")
+      .addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT" })
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup("docs", app, document);
     await registerBullBoard(app);
   }
 

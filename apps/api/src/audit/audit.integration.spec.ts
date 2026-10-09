@@ -2,7 +2,8 @@ import Redis from "ioredis";
 import { ConfigService } from "@nestjs/config";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
-import { ThrottlerGuard } from "@nestjs/throttler";
+import { ThrottlerStorage } from "@nestjs/throttler";
+import { inertThrottlerStorage } from "../test/no-throttle";
 import { Test } from "@nestjs/testing";
 import { ZodValidationPipe } from "nestjs-zod";
 import { DataSource } from "typeorm";
@@ -128,8 +129,8 @@ beforeAll(async () => {
     .useValue({})
     .overrideProvider(WebhookDeliveryProcessor)
     .useValue({})
-    .overrideGuard(ThrottlerGuard)
-    .useValue({ canActivate: () => true })
+    .overrideProvider(ThrottlerStorage)
+    .useValue(inertThrottlerStorage)
     .compile();
 
   app = moduleRef.createNestApplication<NestFastifyApplication>(

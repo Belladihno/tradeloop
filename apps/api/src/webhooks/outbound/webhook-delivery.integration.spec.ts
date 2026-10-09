@@ -5,7 +5,8 @@ import { getQueueToken } from "@nestjs/bullmq";
 import { ConfigService } from "@nestjs/config";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { FastifyAdapter } from "@nestjs/platform-fastify";
-import { ThrottlerGuard } from "@nestjs/throttler";
+import { ThrottlerStorage } from "@nestjs/throttler";
+import { inertThrottlerStorage } from "../../test/no-throttle";
 import { Test } from "@nestjs/testing";
 import { hash } from "argon2";
 import { ZodValidationPipe } from "nestjs-zod";
@@ -158,8 +159,8 @@ beforeAll(async () => {
     .useValue({})
     .overrideProvider(NotificationsProcessor)
     .useValue({})
-    .overrideGuard(ThrottlerGuard)
-    .useValue({ canActivate: () => true })
+    .overrideProvider(ThrottlerStorage)
+    .useValue(inertThrottlerStorage)
     .compile();
 
   app = moduleRef.createNestApplication<NestFastifyApplication>(
