@@ -35,6 +35,7 @@ coverage/
 # local planning docs (not part of the product)
 TRADELOOP_TRD.md
 docs/
+stitch_document_comprehension_analysis/
 
 # agent scratch workspaces (not part of the product)
 .superpowers/
