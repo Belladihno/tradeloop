@@ -1,17 +1,39 @@
 import Link from "next/link";
 
+const HEADING = "Ready to shop without the fear of fraud?";
+const BODY =
+  "Experience frictionless e-commerce with built-in escrow protection on every order across Nigeria.";
+
 export function CtaBanner() {
   return (
-    <section aria-label="Get started" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
-      <div className="flex flex-col items-start gap-6 rounded-xl bg-teal px-6 py-10 md:flex-row md:items-center md:justify-between md:px-10">
+    <section aria-label="Get started" className="mx-auto max-w-[1280px] px-4 py-8 md:px-8 md:py-12">
+      <div className="rounded-xl bg-surface-container p-4 shadow-sm md:hidden">
+        <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-teal text-white">
+          <span className="material-symbols-outlined text-[24px]">gavel</span>
+        </div>
+        <h2 className="font-display text-xl font-semibold">{HEADING}</h2>
+        <p className="mt-1 text-sm text-ink-secondary">{BODY}</p>
+        <div className="flex flex-col gap-2 pt-3">
+          <Link
+            href="/register"
+            className="h-11 w-full rounded-lg bg-amber text-center text-xs font-bold uppercase tracking-wider text-ink shadow-sm"
+          >
+            <span className="inline-block py-3">Start Buying Safely</span>
+          </Link>
+          <Link
+            href="/register?role=SELLER"
+            className="h-11 w-full rounded-lg border border-line bg-surface-container-lowest text-center text-xs font-bold uppercase tracking-wider"
+          >
+            <span className="inline-block py-3">Become a Verified Seller</span>
+          </Link>
+        </div>
+      </div>
+      <div className="hidden flex-col items-start gap-6 rounded-xl bg-teal px-6 py-10 md:flex md:flex-row md:items-center md:justify-between md:px-10">
         <div>
           <h2 className="font-display text-2xl font-bold text-white md:text-[32px] md:leading-10">
-            Ready to shop without the fear of fraud?
+            {HEADING}
           </h2>
-          <p className="mt-2 max-w-xl text-sm text-white/85">
-            Experience frictionless e-commerce with built-in escrow protection on every order
-            across Nigeria.
-          </p>
+          <p className="mt-2 max-w-xl text-sm text-white/85">{BODY}</p>
         </div>
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
           <Link

@@ -44,7 +44,26 @@ export function EscrowSteps() {
             Protection from payment checkout to package inspection.
           </p>
         </div>
-        <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-6 flex flex-col md:hidden">
+          {STEPS.map((step, i) => (
+            <li key={step.index} className="relative flex items-start gap-3 pb-6 last:pb-0">
+              {i < STEPS.length - 1 && (
+                <span aria-hidden="true" className="absolute left-4 top-9 h-full w-px bg-line" />
+              )}
+              <span className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-container font-mono text-[11px] font-bold text-teal">
+                {step.index}
+              </span>
+              <div className="min-w-0 pt-0.5">
+                <h3 className="text-sm font-semibold">{step.title}</h3>
+                <p className="mt-0.5 text-xs leading-snug text-ink-secondary">{step.body}</p>
+                <p className="mt-1 font-mono text-[11px] font-medium uppercase tracking-wider text-teal">
+                  {step.tag}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <ol className="mt-8 hidden gap-4 md:grid md:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step) => (
             <li key={step.index} className="rounded-lg border border-line bg-surface p-5">
               <div className="flex items-center justify-between">
