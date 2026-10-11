@@ -18,6 +18,12 @@ const config: Config = {
           deep: "#815500",
         },
         surface: "#F9F7F4",
+        // Layered surfaces from the Stitch master (DESIGN.md). `surface`
+        // stays the page canvas; these separate floating chrome (header,
+        // trust bar, footer) and sunken bands (deals) from it.
+        "surface-container-lowest": "#ffffff",
+        "surface-container-low": "#f5f3f3",
+        "surface-container": "#efeded",
         ink: {
           DEFAULT: "#1A1A1A",
           secondary: "#4A4A4A",

@@ -36,7 +36,7 @@ export function HeroSearch() {
   }
 
   return (
-    <section className="w-full border-b border-line/60 bg-gradient-to-b from-card via-surface to-surface px-4 py-12 md:px-8 md:py-16">
+    <section className="w-full border-b border-line/60 bg-gradient-to-b from-surface-container-lowest via-surface-container-low/50 to-surface px-4 py-12 md:px-8 md:py-16">
       <div className="mx-auto max-w-3xl text-center">
         <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-teal/20 bg-teal/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-teal">
           <span className="material-symbols-outlined text-[14px]">verified_user</span>
@@ -53,7 +53,7 @@ export function HeroSearch() {
         <form
           onSubmit={submit}
           role="search"
-          className="mx-auto mt-8 flex max-w-2xl flex-col gap-2 rounded-xl border border-line bg-card p-2 sm:flex-row sm:items-center"
+          className="mx-auto mt-8 flex max-w-2xl flex-col gap-2 rounded-xl border border-line bg-surface-container-lowest p-2 sm:flex-row sm:items-center"
         >
           <label htmlFor="hero-department" className="sr-only">
             Department

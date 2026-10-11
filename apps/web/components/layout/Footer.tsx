@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export function Footer() {
   return (
-    <footer className="border-t border-line/80 bg-card">
+    <footer className="border-t border-line/80 bg-surface-container-lowest">
       <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 md:px-8">
         <div className="space-y-4">
           <Image src="/logo.svg" alt="Tradeloop" width={140} height={35} className="h-8 w-auto" />

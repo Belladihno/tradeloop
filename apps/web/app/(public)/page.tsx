@@ -29,17 +29,19 @@ export default function LandingPage() {
           </Suspense>
         </div>
       </section>
-      <section aria-label="Curated deals" className="mx-auto max-w-[1280px] px-4 pb-12 md:px-8">
-        <SectionHeader
-          eyebrow="Verified escrow inventory"
-          title="Curated Marketplace Deals"
-          linkHref="/products"
-          linkLabel="View all deals"
-        />
-        <div className="mt-6">
-          <Suspense fallback={<DealsSkeleton />}>
-            <DealsGrid />
-          </Suspense>
+      <section aria-label="Curated deals" className="w-full border-y border-line/60 bg-surface-container-low">
+        <div className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
+          <SectionHeader
+            eyebrow="Verified escrow inventory"
+            title="Curated Marketplace Deals"
+            linkHref="/products"
+            linkLabel="View all deals"
+          />
+          <div className="mt-6">
+            <Suspense fallback={<DealsSkeleton />}>
+              <DealsGrid />
+            </Suspense>
+          </div>
         </div>
       </section>
       <EscrowSteps />

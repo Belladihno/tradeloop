@@ -5,7 +5,7 @@ import { CategoryNav } from "./CategoryNav";
 
 export function Navbar() {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-line/60 bg-card/95 backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-line/60 bg-surface-container-lowest/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-4 px-4 md:h-20 md:px-8">
         <Link href="/" className="flex shrink-0 items-center transition-opacity hover:opacity-90">
           <Image src="/logo.svg" alt="Tradeloop" width={160} height={40} className="h-8 w-auto md:h-9" priority />

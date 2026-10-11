@@ -18,7 +18,7 @@ const ITEMS = [
 
 export function TrustBar() {
   return (
-    <section aria-label="Why Tradeloop" className="w-full border-b border-line/60 bg-card px-4 py-6 md:px-8">
+    <section aria-label="Why Tradeloop" className="w-full border-b border-line/60 bg-surface-container-lowest px-4 py-6 md:px-8">
       <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 sm:divide-x sm:divide-line/60">
         {ITEMS.map((item) => (
           <div key={item.title} className="flex items-start gap-3 sm:px-6 sm:first:pl-0 sm:last:pr-0">
