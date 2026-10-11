@@ -31,7 +31,7 @@ const STEPS = [
 
 export function EscrowSteps() {
   return (
-    <section aria-label="How escrow works" className="w-full border-y border-line/60 bg-surface-container-lowest px-4 py-12 md:px-8">
+    <section id="how-it-works" aria-label="How escrow works" className="w-full border-y border-line/60 bg-surface-container-lowest px-4 py-12 md:px-8 scroll-mt-28">
       <div className="mx-auto max-w-[1280px]">
         <div className="mx-auto max-w-xl space-y-2 text-center">
           <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-amber-deep">

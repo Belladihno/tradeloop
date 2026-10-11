@@ -1,10 +1,25 @@
 import Image from "next/image";
+import Link from "next/link";
+
+const BUYER_LINKS = [
+  { label: "How Escrow Works", href: "/#how-it-works" },
+  { label: "Dispute Resolution", href: "/dispute-resolution" },
+  { label: "Safe Trading Handbook", href: "/safe-trading" },
+  { label: "Track Deliveries", href: "/orders" },
+] as const;
+
+const MERCHANT_LINKS = [
+  { label: "Sell on Tradeloop", href: "/register?role=SELLER" },
+  { label: "KYC & Tier Approval", href: "/kyc-approval" },
+  { label: "Escrow Fee Schedule", href: "/fee-schedule" },
+  { label: "Merchant APIs", href: "/merchant-apis" },
+] as const;
 
 export function Footer() {
   return (
     <footer className="border-t border-line/80 bg-surface-container-lowest">
-      <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 md:px-8">
-        <div className="space-y-4">
+      <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-5 md:px-8">
+        <div className="space-y-4 lg:col-span-2">
           <Image src="/logo.svg" alt="Tradeloop" width={140} height={35} className="h-8 w-auto" />
           <p className="max-w-sm text-sm text-ink-secondary">
             Secured multi-vendor escrow marketplace designed for honest commerce. Funds protected,
@@ -19,6 +34,30 @@ export function Footer() {
               Flutterwave
             </span>
           </div>
+        </div>
+        <div>
+          <h3 className="mb-3 text-sm font-semibold">Buyer Protection</h3>
+          <ul className="space-y-2 text-sm text-ink-secondary">
+            {BUYER_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className="transition-colors hover:text-teal">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 className="mb-3 text-sm font-semibold">Merchant Hub</h3>
+          <ul className="space-y-2 text-sm text-ink-secondary">
+            {MERCHANT_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className="transition-colors hover:text-teal">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">Region &amp; Currency</h3>
