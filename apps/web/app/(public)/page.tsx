@@ -16,28 +16,33 @@ export default function LandingPage() {
     <main>
       <HeroSearch />
       <TrustBar />
-      <section aria-label="Browse categories" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
+      <section aria-label="Browse categories" className="mx-auto max-w-[1280px] px-4 py-8 md:px-8 md:py-12">
         <SectionHeader
           title="Browse Verified Categories"
+          titleMobile="Browse Vault"
           sub="Direct from inspected merchants with guaranteed escrow protection."
           linkHref="/products"
           linkLabel="View all categories"
+          linkLabelMobile="See all"
         />
-        <div className="mt-6">
+        <div className="mt-4 md:mt-6">
           <Suspense fallback={<CategoryGridSkeleton />}>
             <CategoryGrid />
           </Suspense>
         </div>
       </section>
       <section aria-label="Curated deals" className="w-full border-y border-line/60 bg-surface-container-low">
-        <div className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
+        <div className="mx-auto max-w-[1280px] px-4 py-8 md:px-8 md:py-12">
           <SectionHeader
             eyebrow="Verified escrow inventory"
             title="Curated Marketplace Deals"
+            titleMobile="Trending Escrow Deals"
+            dot
             linkHref="/products"
             linkLabel="View all deals"
+            linkLabelMobile="View all"
           />
-          <div className="mt-6">
+          <div className="mt-4 md:mt-6">
             <Suspense fallback={<DealsSkeleton />}>
               <DealsGrid />
             </Suspense>

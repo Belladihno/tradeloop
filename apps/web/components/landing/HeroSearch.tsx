@@ -36,20 +36,36 @@ export function HeroSearch() {
   }
 
   return (
-    <section className="w-full border-b border-line/60 bg-gradient-to-b from-surface-container-lowest via-surface-container-low/50 to-surface px-4 py-12 md:px-8 md:py-16">
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-teal/20 bg-teal/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-teal">
-          <span className="material-symbols-outlined text-[14px]">verified_user</span>
-          Nigeria&apos;s Secured Multi-Vendor Marketplace
-        </p>
-        <h1 className="font-display text-[34px] font-bold leading-[42px] tracking-tight md:text-5xl md:leading-[56px]">
-          Find authenticated products.
-          <span className="block text-teal">Pay only after physical inspection.</span>
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-[15px] leading-6 text-ink-secondary md:text-lg md:leading-7">
-          Every transaction is held in a protected escrow vault until you receive, examine, and
-          approve your order.
-        </p>
+    <section className="w-full px-4 pt-4 md:border-b md:border-line/60 md:bg-gradient-to-b md:from-surface-container-lowest md:via-surface-container-low/50 md:to-surface md:px-8 md:py-16">
+      <div className="mx-auto max-w-3xl md:text-center">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-teal-dark to-teal p-4 text-white shadow-sm md:hidden">
+          <div className="relative flex flex-col gap-2">
+            <p className="inline-flex items-center gap-1.5 self-start rounded-full bg-white/15 px-2 py-0.5 font-mono text-[11px] backdrop-blur-md">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber" />
+              Nigeria&apos;s Regulated Marketplace Vault
+            </p>
+            <h1 className="font-display text-[34px] font-bold leading-[42px] tracking-tight">
+              Find authenticated products. Pay only after inspection.
+            </h1>
+            <p className="max-w-[280px] text-[13px] leading-5 text-white/85">
+              Funds remain locked in institutional escrow until physical delivery verification.
+            </p>
+          </div>
+        </div>
+        <div className="hidden md:block">
+          <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-teal/20 bg-teal/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-teal">
+            <span className="material-symbols-outlined text-[14px]">verified_user</span>
+            Nigeria&apos;s Secured Multi-Vendor Marketplace
+          </p>
+          <h1 className="font-display text-5xl font-bold leading-[56px] tracking-tight">
+            Find authenticated products.
+            <span className="block text-teal">Pay only after physical inspection.</span>
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-7 text-ink-secondary">
+            Every transaction is held in a protected escrow vault until you receive, examine, and
+            approve your order.
+          </p>
+        </div>
         <form
           onSubmit={submit}
           role="search"
@@ -108,13 +124,13 @@ export function HeroSearch() {
             ⌘K
           </kbd>
         </form>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 font-mono text-[11px] text-ink-secondary">
-          <span className="font-medium text-ink-muted">Popular searches:</span>
+        <div className="mt-4 flex flex-nowrap items-center gap-2 overflow-x-auto font-mono text-[11px] text-ink-secondary md:flex-wrap md:justify-center">
+          <span className="shrink-0 font-medium text-ink-muted">Popular searches:</span>
           {POPULAR.map((term) => (
             <Link
               key={term}
               href={`/products?q=${encodeURIComponent(term)}`}
-              className="rounded-lg border border-line/60 bg-card px-2.5 py-1 text-ink transition-all hover:border-teal hover:text-teal"
+              className="shrink-0 rounded-lg border border-line/60 bg-card px-2.5 py-1 text-ink transition-all hover:border-teal hover:text-teal"
             >
               {term}
             </Link>
