@@ -2,19 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-
-// Static department shortcuts. Slugs mirror the backend slugify rule
-// (lowercase, non-alphanumerics to hyphens); unknown slugs resolve to an
-// empty listing, never an error.
-const DEPARTMENTS = [
-  { name: "All Departments", slug: "" },
-  { name: "Phones & Gadgets", slug: "phones-gadgets" },
-  { name: "Laptops & Tech", slug: "laptops-tech" },
-  { name: "Fashion & Apparel", slug: "fashion-apparel" },
-  { name: "Solar & Power", slug: "solar-power" },
-  { name: "Home & Office", slug: "home-office" },
-] as const;
+import { useEffect, useRef, useState } from "react";
+import { DEPARTMENTS } from "@/lib/departments";
 
 const POPULAR = ["iPhone 15 Pro", "M3 MacBook Air", "Sony ANC", "5kVA Inverter"] as const;
 
@@ -24,6 +13,18 @@ export function HeroSearch() {
   const router = useRouter();
   const [department, setDepartment] = useState<string>(DEPARTMENTS[0].slug);
   const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent): void {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        inputRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
 
   function submit(event: React.FormEvent): void {
     event.preventDefault();
@@ -37,6 +38,10 @@ export function HeroSearch() {
   return (
     <section className="w-full border-b border-line/60 bg-gradient-to-b from-card via-surface to-surface px-4 py-12 md:px-8 md:py-16">
       <div className="mx-auto max-w-3xl text-center">
+        <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-teal/20 bg-teal/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-teal">
+          <span className="material-symbols-outlined text-[14px]">verified_user</span>
+          Nigeria&apos;s Secured Multi-Vendor Marketplace
+        </p>
         <h1 className="font-display text-[34px] font-bold leading-[42px] tracking-tight md:text-5xl md:leading-[56px]">
           Find authenticated products.
           <span className="block text-teal">Pay only after physical inspection.</span>
@@ -70,6 +75,7 @@ export function HeroSearch() {
           </label>
           <input
             id="hero-search"
+            ref={inputRef}
             type="search"
             value={query}
             maxLength={MAX_QUERY_LENGTH}
@@ -77,6 +83,12 @@ export function HeroSearch() {
             placeholder="Search iPhone 15 Pro, M3 MacBook"
             className="w-full flex-1 bg-transparent px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
           />
+          <kbd
+            aria-hidden="true"
+            className="mr-1 hidden items-center gap-0.5 rounded-md bg-surface px-1.5 py-0.5 font-mono text-[11px] text-ink-muted lg:flex"
+          >
+            ⌘K
+          </kbd>
           <button
             type="submit"
             className="rounded-lg bg-teal px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-dark"

@@ -26,9 +26,9 @@ export async function CategoryGrid() {
   }
   if (categories.length === 0) return <CategoryEmpty />;
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      {categories.slice(0, 6).map((category, i) => (
-        <CategoryCard key={category.id} category={category} index={i} />
+    <div className="flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0 lg:grid-cols-6">
+      {categories.slice(0, 6).map((category) => (
+        <CategoryCard key={category.id} category={category} />
       ))}
     </div>
   );

@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { HeaderSearch } from "./HeaderSearch";
+import { CategoryNav } from "./CategoryNav";
 
 export function Navbar() {
   return (
@@ -8,6 +10,7 @@ export function Navbar() {
         <Link href="/" className="flex shrink-0 items-center transition-opacity hover:opacity-90">
           <Image src="/logo.svg" alt="Tradeloop" width={160} height={40} className="h-8 w-auto md:h-9" priority />
         </Link>
+        <HeaderSearch />
         <div className="flex shrink-0 items-center gap-2 md:gap-4">
           <span className="hidden items-center gap-1 rounded-full border border-teal/20 bg-teal/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-teal sm:flex">
             <span className="material-symbols-outlined text-[15px]">shield</span>
@@ -35,6 +38,7 @@ export function Navbar() {
           </Link>
         </div>
       </div>
+      <CategoryNav />
     </header>
   );
 }

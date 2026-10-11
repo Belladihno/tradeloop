@@ -54,8 +54,9 @@ export function ProductCard({ product }: { product: DealProduct }) {
           ) : (
             <Link
               href={detailHref}
-              className="rounded-md bg-teal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-dark"
+              className="flex items-center gap-1 rounded-md bg-teal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-dark"
             >
+              <span className="material-symbols-outlined text-[16px]">lock</span>
               Buy with Escrow
             </Link>
           )}
