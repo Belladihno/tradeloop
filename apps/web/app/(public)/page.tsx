@@ -6,6 +6,8 @@ import { CategoryGrid } from "@/components/landing/CategoryGrid";
 import { CategoryGridSkeleton } from "@/components/landing/CategoryGridSkeleton";
 import { DealsGrid } from "@/components/landing/DealsGrid";
 import { DealsSkeleton } from "@/components/landing/DealsSkeleton";
+import { EscrowSteps } from "@/components/landing/EscrowSteps";
+import { CtaBanner } from "@/components/landing/CtaBanner";
 
 export const revalidate = 60;
 
@@ -47,6 +49,8 @@ export default function LandingPage() {
           </Suspense>
         </div>
       </section>
+      <EscrowSteps />
+      <CtaBanner />
     </main>
   );
 }
