@@ -12,7 +12,7 @@ const ITEMS = [
   {
     icon: "bolt",
     title: "Seller Payouts on Delivery",
-    body: "Funds move to the merchant's bank account once you confirm delivery of your order.",
+    body: "Once you confirm delivery, funds settle to the seller, who can request payouts to their bank account.",
   },
 ] as const;
 

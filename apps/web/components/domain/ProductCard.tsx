@@ -4,30 +4,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { formatCurrency } from "@tradeloop/utils";
+import type { DealProduct } from "@/lib/api-shapes";
+import { isDisplayableImage } from "@/lib/images";
 import { EscrowBadge } from "./EscrowBadge";
 import { StatusPill } from "./StatusPill";
-
-export interface DealProduct {
-  id: string;
-  slug: string;
-  name: string;
-  price: string;
-  stock: number;
-  imageUrl: string | null;
-  category: { id: string; name: string; slug: string } | null;
-}
 
 export function ProductCard({ product }: { product: DealProduct }) {
   const [imageFailed, setImageFailed] = useState(false);
   const soldOut = product.stock <= 0;
+  const detailHref = `/products/${encodeURIComponent(product.slug)}`;
   return (
     <article className="flex flex-col overflow-hidden rounded-md border border-line bg-card transition-colors hover:border-teal">
       <Link
-        href={`/products/${product.slug}`}
+        href={detailHref}
         className="relative block aspect-[4/3] bg-surface"
         aria-label={product.name}
       >
-        {product.imageUrl && !imageFailed ? (
+        {isDisplayableImage(product.imageUrl) && !imageFailed ? (
           <Image
             src={product.imageUrl}
             alt={product.name}
@@ -47,7 +40,7 @@ export function ProductCard({ product }: { product: DealProduct }) {
           {product.category?.name ?? "Marketplace"} · <EscrowBadge />
         </p>
         <h3 className="font-display text-base font-semibold leading-6">
-          <Link href={`/products/${product.slug}`} className="hover:text-teal">
+          <Link href={detailHref} className="hover:text-teal">
             {product.name}
           </Link>
         </h3>
@@ -60,7 +53,7 @@ export function ProductCard({ product }: { product: DealProduct }) {
             </span>
           ) : (
             <Link
-              href={`/products/${product.slug}`}
+              href={detailHref}
               className="rounded-md bg-teal px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-dark"
             >
               Buy with Escrow

@@ -1,30 +1,28 @@
 import { apiServer } from "@/lib/api-server";
-import { ProductCard, type DealProduct } from "@/components/domain/ProductCard";
+import { rateLimitNotice } from "@/lib/api-notice";
+import { asProductPage } from "@/lib/api-shapes";
+import { ProductCard } from "@/components/domain/ProductCard";
 
-interface ProductPage {
-  items: DealProduct[];
-  nextCursor: string | null;
-}
-
-function DealsEmpty() {
+function DealsEmpty({ notice }: { notice?: string }) {
   return (
     <div role="status" className="rounded-md border border-line bg-card px-4 py-10 text-center">
-      <p className="text-sm font-semibold">No deals yet</p>
-      <p className="mt-1 text-[13px] text-ink-secondary">
-        New products from verified sellers will appear here.
-      </p>
+      <p className="text-sm font-semibold">{notice ?? "No deals yet"}</p>
+      {!notice && (
+        <p className="mt-1 text-[13px] text-ink-secondary">
+          New products from verified sellers will appear here.
+        </p>
+      )}
     </div>
   );
 }
 
 export async function DealsGrid() {
-  let items: DealProduct[] = [];
+  let items: ReturnType<typeof asProductPage>["items"] = [];
   try {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
-    const page = await apiServer(baseUrl).get<ProductPage>("/products?limit=8&sort=newest");
-    items = page.items;
-  } catch {
-    return <DealsEmpty />;
+    items = asProductPage(await apiServer(baseUrl).get("/products?limit=8&sort=newest")).items;
+  } catch (error) {
+    return <DealsEmpty notice={rateLimitNotice(error) ?? undefined} />;
   }
   if (items.length === 0) return <DealsEmpty />;
   return (

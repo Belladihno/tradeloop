@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+// Static department shortcuts. Slugs mirror the backend slugify rule
+// (lowercase, non-alphanumerics to hyphens); unknown slugs resolve to an
+// empty listing, never an error.
 const DEPARTMENTS = [
-  "All Departments",
-  "Phones & Gadgets",
-  "Laptops & Tech",
-  "Fashion & Apparel",
-  "Solar & Power",
-  "Home & Office",
+  { name: "All Departments", slug: "" },
+  { name: "Phones & Gadgets", slug: "phones-gadgets" },
+  { name: "Laptops & Tech", slug: "laptops-tech" },
+  { name: "Fashion & Apparel", slug: "fashion-apparel" },
+  { name: "Solar & Power", slug: "solar-power" },
+  { name: "Home & Office", slug: "home-office" },
 ] as const;
 
 const POPULAR = ["iPhone 15 Pro", "M3 MacBook Air", "Sony ANC", "5kVA Inverter"] as const;
@@ -19,7 +22,7 @@ const MAX_QUERY_LENGTH = 200;
 
 export function HeroSearch() {
   const router = useRouter();
-  const [department, setDepartment] = useState<string>(DEPARTMENTS[0]);
+  const [department, setDepartment] = useState<string>(DEPARTMENTS[0].slug);
   const [query, setQuery] = useState("");
 
   function submit(event: React.FormEvent): void {
@@ -27,7 +30,7 @@ export function HeroSearch() {
     const q = query.trim();
     if (!q) return;
     const params = new URLSearchParams({ q });
-    if (department !== DEPARTMENTS[0]) params.set("category", department);
+    if (department) params.set("category", department);
     router.push(`/products?${params.toString()}`);
   }
 
@@ -57,8 +60,8 @@ export function HeroSearch() {
             className="rounded-lg bg-surface px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal"
           >
             {DEPARTMENTS.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
+              <option key={dept.slug} value={dept.slug}>
+                {dept.name}
               </option>
             ))}
           </select>

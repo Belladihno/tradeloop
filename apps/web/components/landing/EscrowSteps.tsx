@@ -21,7 +21,7 @@ const STEPS = [
     index: "04",
     title: "Automated Release",
     body: "On buyer confirmation, escrow releases to the seller. Sellers request payouts to their bank.",
-    tag: "Instant Settlement",
+    tag: "On Confirmation",
   },
 ] as const;
 
