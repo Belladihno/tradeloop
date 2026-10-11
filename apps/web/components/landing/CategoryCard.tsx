@@ -6,12 +6,12 @@ export function CategoryCard({ category }: { category: CategoryNode }) {
   return (
     <Link
       href={`/products?category=${encodeURIComponent(category.slug)}`}
-      className="flex w-[140px] shrink-0 flex-col items-center gap-2 rounded-md border border-line bg-card px-4 py-6 text-center transition-colors hover:border-teal sm:w-auto"
+      className="group flex w-[140px] shrink-0 flex-col items-center rounded-xl border border-line bg-surface-container-lowest p-6 text-center transition-all hover:border-teal hover:shadow-md sm:w-auto"
     >
-      <span className="material-symbols-outlined text-[28px] text-teal">
-        {categoryIcon(category.slug)}
-      </span>
-      <span className="text-sm font-semibold">{category.name}</span>
+      <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-surface-container text-teal transition-colors group-hover:bg-teal group-hover:text-white">
+        <span className="material-symbols-outlined text-[24px]">{categoryIcon(category.slug)}</span>
+      </div>
+      <span className="text-sm font-bold leading-tight">{category.name}</span>
     </Link>
   );
 }

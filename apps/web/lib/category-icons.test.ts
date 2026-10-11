@@ -3,16 +3,16 @@ import { categoryIcon } from "./category-icons";
 
 describe("categoryIcon", () => {
   it("maps known slugs to their Stitch icons", () => {
-    expect(categoryIcon("phones-gadgets")).toBe("smartphone");
-    expect(categoryIcon("laptops-tech")).toBe("laptop_mac");
-    expect(categoryIcon("fashion-apparel")).toBe("checkroom");
-    expect(categoryIcon("audio-gadgets")).toBe("headphones");
-    expect(categoryIcon("solar-power")).toBe("solar_power");
-    expect(categoryIcon("home-office")).toBe("desk");
+    expect(categoryIcon("phones")).toBe("smartphone");
+    expect(categoryIcon("computing")).toBe("laptop_mac");
+    expect(categoryIcon("fashion")).toBe("checkroom");
+    expect(categoryIcon("audio")).toBe("headphones");
+    expect(categoryIcon("power")).toBe("solar_power");
+    expect(categoryIcon("phones-tablets")).toBe("smartphone");
   });
 
   it("matches case-insensitively and falls back to storefront", () => {
-    expect(categoryIcon("Phones-GADGETS")).toBe("smartphone");
+    expect(categoryIcon("Phones")).toBe("smartphone");
     expect(categoryIcon("something-new")).toBe("storefront");
     expect(categoryIcon("")).toBe("storefront");
   });

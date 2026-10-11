@@ -53,48 +53,60 @@ export function HeroSearch() {
         <form
           onSubmit={submit}
           role="search"
-          className="mx-auto mt-8 flex max-w-2xl flex-col gap-2 rounded-xl border border-line bg-surface-container-lowest p-2 sm:flex-row sm:items-center"
+          className="mx-auto mt-8 flex max-w-2xl flex-col items-stretch gap-2 rounded-xl border border-line bg-surface-container-lowest p-2 shadow-md transition-shadow hover:shadow-lg sm:flex-row"
         >
           <label htmlFor="hero-department" className="sr-only">
             Department
           </label>
-          <select
-            id="hero-department"
-            value={department}
-            onChange={(event) => setDepartment(event.target.value)}
-            className="rounded-lg bg-surface px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal"
-          >
-            {DEPARTMENTS.map((dept) => (
-              <option key={dept.slug} value={dept.slug}>
-                {dept.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative shrink-0 border-b border-line/80 sm:border-b-0 sm:border-r">
+            <select
+              id="hero-department"
+              value={department}
+              onChange={(event) => setDepartment(event.target.value)}
+              className="h-12 w-full cursor-pointer appearance-none rounded-xl bg-transparent px-4 pr-9 text-sm font-medium text-ink focus:outline-none sm:w-auto"
+            >
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept.slug} value={dept.slug}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
+            <span
+              aria-hidden="true"
+              className="material-symbols-outlined pointer-events-none absolute right-2.5 top-3.5 text-[18px] text-ink-muted"
+            >
+              expand_more
+            </span>
+          </div>
           <label htmlFor="hero-search" className="sr-only">
             Search products
           </label>
-          <input
-            id="hero-search"
-            ref={inputRef}
-            type="search"
-            value={query}
-            maxLength={MAX_QUERY_LENGTH}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search iPhone 15 Pro, M3 MacBook"
-            className="w-full flex-1 bg-transparent px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
-          />
+          <div className="relative flex flex-1 items-center px-3">
+            <span className="material-symbols-outlined mr-1 text-[20px] text-ink-muted">search</span>
+            <input
+              id="hero-search"
+              ref={inputRef}
+              type="search"
+              value={query}
+              maxLength={MAX_QUERY_LENGTH}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search iPhone 15 Pro, M3 MacBook"
+              className="w-full bg-transparent py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            className="flex shrink-0 items-center justify-center gap-1 rounded-xl bg-teal px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-dark"
+          >
+            <span>Search Products</span>
+            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </button>
           <kbd
             aria-hidden="true"
-            className="mr-1 hidden items-center gap-0.5 rounded-md bg-surface px-1.5 py-0.5 font-mono text-[11px] text-ink-muted lg:flex"
+            className="mr-1 hidden items-center gap-0.5 self-center rounded-md bg-surface px-1.5 py-0.5 font-mono text-[11px] text-ink-muted lg:flex"
           >
             ⌘K
           </kbd>
-          <button
-            type="submit"
-            className="rounded-lg bg-teal px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-dark"
-          >
-            Search Products
-          </button>
         </form>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2 font-mono text-[11px] text-ink-secondary">
           <span className="font-medium text-ink-muted">Popular searches:</span>

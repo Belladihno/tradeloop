@@ -25,7 +25,7 @@ export function HeaderSearch() {
       <label htmlFor="header-search" className="sr-only">
         Search products
       </label>
-      <div className="flex w-full items-center rounded-xl border border-line/70 bg-surface px-3 py-1.5 transition-all focus-within:border-teal focus-within:bg-card">
+      <div className="flex w-full items-center rounded-xl border border-line/70 bg-surface-container-low px-3 py-1.5 transition-all focus-within:border-teal focus-within:bg-surface-container-lowest">
         <span className="material-symbols-outlined mr-1 text-[20px] text-ink-muted">search</span>
         <input
           id="header-search"

@@ -14,10 +14,10 @@ export function ProductCard({ product }: { product: DealProduct }) {
   const soldOut = product.stock <= 0;
   const detailHref = `/products/${encodeURIComponent(product.slug)}`;
   return (
-    <article className="flex flex-col overflow-hidden rounded-md border border-line bg-card transition-colors hover:border-teal">
+    <article className="group flex flex-col justify-between overflow-hidden rounded-xl border border-line bg-surface-container-lowest transition-all hover:shadow-lg">
       <Link
         href={detailHref}
-        className="relative block aspect-[4/3] bg-surface"
+        className="relative block aspect-square overflow-hidden bg-surface-container"
         aria-label={product.name}
       >
         {isDisplayableImage(product.imageUrl) && !imageFailed ? (
