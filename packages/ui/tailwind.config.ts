@@ -13,6 +13,9 @@ const config: Config = {
         amber: {
           DEFAULT: "#E8A020",
           light: "#FDF3E3",
+          // Deep amber-brown for small text on light surfaces. #E8A020
+          // fails contrast below ~14px; this is the Stitch secondary token.
+          deep: "#815500",
         },
         surface: "#F9F7F4",
         ink: {

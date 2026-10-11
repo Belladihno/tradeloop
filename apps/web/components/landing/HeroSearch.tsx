@@ -96,20 +96,18 @@ export function HeroSearch() {
             Search Products
           </button>
         </form>
-        <p className="mt-4 text-xs text-ink-muted">
-          Popular searches:{" "}
-          {POPULAR.map((term, i) => (
-            <span key={term}>
-              {i > 0 && " · "}
-              <Link
-                href={`/products?q=${encodeURIComponent(term)}`}
-                className="underline-offset-2 hover:text-teal hover:underline"
-              >
-                {term}
-              </Link>
-            </span>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 font-mono text-[11px] text-ink-secondary">
+          <span className="font-medium text-ink-muted">Popular searches:</span>
+          {POPULAR.map((term) => (
+            <Link
+              key={term}
+              href={`/products?q=${encodeURIComponent(term)}`}
+              className="rounded-lg border border-line/60 bg-card px-2.5 py-1 text-ink transition-all hover:border-teal hover:text-teal"
+            >
+              {term}
+            </Link>
           ))}
-        </p>
+        </div>
       </div>
     </section>
   );

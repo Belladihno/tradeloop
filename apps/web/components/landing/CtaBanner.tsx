@@ -5,7 +5,7 @@ export function CtaBanner() {
     <section aria-label="Get started" className="mx-auto max-w-[1280px] px-4 py-12 md:px-8">
       <div className="flex flex-col items-start gap-6 rounded-xl bg-teal px-6 py-10 md:flex-row md:items-center md:justify-between md:px-10">
         <div>
-          <h2 className="font-display text-2xl font-semibold text-white md:text-[32px] md:leading-10">
+          <h2 className="font-display text-2xl font-bold text-white md:text-[32px] md:leading-10">
             Ready to shop without the fear of fraud?
           </h2>
           <p className="mt-2 max-w-xl text-sm text-white/85">

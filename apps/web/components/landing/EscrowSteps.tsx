@@ -33,15 +33,17 @@ export function EscrowSteps() {
   return (
     <section aria-label="How escrow works" className="w-full border-y border-line/60 bg-card px-4 py-12 md:px-8">
       <div className="mx-auto max-w-[1280px]">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-wider text-amber">
-          Engineered security rail
-        </p>
-        <h2 className="mt-1 font-display text-2xl font-semibold md:text-[32px] md:leading-10">
-          How Tradeloop Escrow Works
-        </h2>
-        <p className="mt-1 text-sm text-ink-secondary">
-          Protection from payment checkout to package inspection.
-        </p>
+        <div className="mx-auto max-w-xl space-y-2 text-center">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-amber-deep">
+            Engineered security rail
+          </p>
+          <h2 className="font-display text-2xl font-bold tracking-tight md:text-[32px] md:leading-10">
+            How Tradeloop Escrow Works
+          </h2>
+          <p className="text-sm leading-5 text-ink-secondary">
+            Protection from payment checkout to package inspection.
+          </p>
+        </div>
         <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step) => (
             <li key={step.index} className="rounded-lg border border-line bg-surface p-5">
@@ -49,9 +51,9 @@ export function EscrowSteps() {
                 <p className="font-mono text-xs font-semibold text-teal">{step.index}</p>
                 <span className="material-symbols-outlined text-[20px] text-teal">{step.icon}</span>
               </div>
-              <h3 className="mt-2 font-display text-lg font-semibold">{step.title}</h3>
+              <h3 className="mt-2 font-display text-lg font-bold">{step.title}</h3>
               <p className="mt-1 text-[13px] leading-5 text-ink-secondary">{step.body}</p>
-              <p className="mt-3 font-mono text-[11px] uppercase tracking-wider text-amber">
+              <p className="mt-3 font-mono text-[11px] font-medium uppercase tracking-wider text-teal">
                 {step.tag}
               </p>
             </li>
