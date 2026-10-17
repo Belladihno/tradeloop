@@ -24,4 +24,11 @@ describe("buildProductQuery", () => {
       "/products?sort=price_asc&cursor=abc&limit=24",
     );
   });
+
+  it("keeps well-formed prices and drops malformed ones", () => {
+    expect(buildProductQuery({ minPrice: "200000", maxPrice: "10.50" })).toBe(
+      "/products?minPrice=200000&maxPrice=10.50&limit=24",
+    );
+    expect(buildProductQuery({ minPrice: "abc", maxPrice: "1e9" })).toBe("/products?limit=24");
+  });
 });

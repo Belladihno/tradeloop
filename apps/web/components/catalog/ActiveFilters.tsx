@@ -14,12 +14,14 @@ function Chip({ label, removeHref }: { label: string; removeHref: string }) {
   );
 }
 
-function priceLabel(min?: string, max?: string): string {
+function priceLabel(min?: string, max?: string): string | null {
   const fmt = (value: string) => `₦${Number(value).toLocaleString("en-NG")}`;
-  if (min && max) return `${fmt(min)} – ${fmt(max)}`;
-  if (min) return `From ${fmt(min)}`;
-  if (max) return `Under ${fmt(max)}`;
-  return "Price";
+  const lo = min && Number.isFinite(Number(min)) ? fmt(min) : undefined;
+  const hi = max && Number.isFinite(Number(max)) ? fmt(max) : undefined;
+  if (lo && hi) return `${lo} – ${hi}`;
+  if (lo) return `From ${lo}`;
+  if (hi) return `Under ${hi}`;
+  return null;
 }
 
 export function ActiveFilters({
@@ -35,11 +37,10 @@ export function ActiveFilters({
     chips.push({ key: "category", label: categoryName ?? params.category, clear: { category: "" } });
   }
   if (params.minPrice || params.maxPrice) {
-    chips.push({
-      key: "price",
-      label: priceLabel(params.minPrice, params.maxPrice),
-      clear: { minPrice: "", maxPrice: "" },
-    });
+    const label = priceLabel(params.minPrice, params.maxPrice);
+    if (label) {
+      chips.push({ key: "price", label, clear: { minPrice: "", maxPrice: "" } });
+    }
   }
   if (params.inStock === "true") {
     chips.push({ key: "inStock", label: "In stock only", clear: { inStock: "" } });

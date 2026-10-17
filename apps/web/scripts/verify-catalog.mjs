@@ -51,8 +51,13 @@ async function modeA() {
     { q: "/products?view=list", markers: ['data-view="list"'] },
     { q: "/products?category=does-not-exist", markers: ["No products match these filters"] },
     { q: "/products?cursor=garbage", markers: ["Could not load products right now"] },
+    {
+      q: "/products?minPrice=abc&maxPrice=1e9",
+      markers: ['data-view="grid"'],
+      notMarkers: ["₦NaN", "Could not load products right now"],
+    },
   ];
-  for (const { q, markers } of cases) {
+  for (const { q, markers, notMarkers = [] } of cases) {
     let res;
     try {
       res = await getText(`${WEB}${q}`);
@@ -63,6 +68,9 @@ async function modeA() {
     check(res.status === 200, `GET ${q} → 200`, `got ${res.status}`);
     for (const marker of markers) {
       check(res.body.includes(marker), `  ⌐ marker "${marker}"`);
+    }
+    for (const marker of notMarkers) {
+      check(!res.body.includes(marker), `  ⌐ absent "${marker}"`);
     }
   }
 }
