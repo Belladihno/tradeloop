@@ -14,6 +14,7 @@ import { ProductListItem } from "@/components/catalog/ProductListItem";
 import { ProductCard } from "@/components/domain/ProductCard";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -111,7 +112,11 @@ export default async function ProductsPage({
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[240px_1fr] lg:grid-cols-[260px_1fr]">
         <FilterSidebar params={params} departments={departments} />
 
-        <section aria-label="Product results" className="min-w-0">
+        <section
+          aria-label="Product results"
+          data-view={isList ? "list" : "grid"}
+          className="min-w-0"
+        >
           {items.length === 0 ? (
             <div role="status" className="rounded-xl border border-line bg-surface-container-lowest px-4 py-16 text-center">
               <span className="material-symbols-outlined text-[40px] text-ink-muted">search_off</span>
